@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      唯一的權限。休息倒數歸零時震動一下，這是 normal permission，
+      安裝時不會彈出授權對話框。
+
+      刻意不要通知權限與前景服務：訓練時 App 本來就在前景、螢幕常亮
+      （見 KeepScreenOn），所以倒數不需要跑在背景。
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:name=".FitApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Fit">
+
+        <!-- 家族成員標記：Hub 掃描已安裝的 App 時靠這幾個值認出 Fit。
+             對外開放的能力（start_routine 等）排在 v0.3，那時才會加
+             com.routina.family.capabilities。 -->
+        <meta-data
+            android:name="com.routina.family.member"
+            android:value="true" />
+        <meta-data
+            android:name="com.routina.family.id"
+            android:value="fit" />
+        <meta-data
+            android:name="com.routina.family.name"
+            android:value="Routina Fit" />
+        <meta-data
+            android:name="com.routina.family.summary"
+            android:value="運動訓練與計數" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>

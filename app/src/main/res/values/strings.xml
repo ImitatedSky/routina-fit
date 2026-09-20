@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Routina Fit</string>
+
+    <!-- 共用動作 -->
+    <string name="action_back">返回</string>
+    <string name="action_more">更多</string>
+    <string name="action_add">加入</string>
+    <string name="action_save">儲存</string>
+    <string name="action_edit">編輯</string>
+    <string name="action_delete">刪除</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_ok">好</string>
+    <string name="action_export">匯出備份</string>
+    <string name="action_import">匯入備份</string>
+    <string name="action_move_up">上移</string>
+    <string name="action_move_down">下移</string>
+
+    <!-- 單位 -->
+    <string name="unit_reps">次</string>
+    <string name="unit_seconds">秒</string>
+    <string name="unit_weight">%1$s kg</string>
+    <string name="measure_reps">計次</string>
+    <string name="measure_seconds">計時</string>
+
+    <!-- 今天 -->
+    <string name="today_title">今天</string>
+    <string name="today_week">本週</string>
+    <string name="today_week_count">練了 %1$d 天</string>
+    <string name="today_no_routine">按右下角的＋建一張課表</string>
+    <string name="today_routines">課表</string>
+    <string name="today_counter_section">不用課表</string>
+    <string name="today_counter">快速計數</string>
+    <string name="today_counter_hint">選一個動作、給一個目標，扣到 0</string>
+    <string name="today_start">開始</string>
+    <string name="routine_meta">%1$d 個動作 · 約 %2$d 分</string>
+    <string name="routine_empty_meta">還沒有動作</string>
+    <string name="routine_new">新增課表</string>
+    <string name="routine_delete_title">刪除這張課表？</string>
+    <string name="routine_delete_message">已經存下的訓練紀錄不受影響。</string>
+
+    <!-- 執行中 -->
+    <string name="run_progress">第 %1$d / %2$d 項</string>
+    <string name="run_finish_set">完成這一組</string>
+    <string name="run_skip_item">這個跳過</string>
+    <string name="run_stop">結束訓練</string>
+    <string name="run_add15">+15 秒</string>
+    <string name="run_skip">跳過</string>
+    <string name="run_pause">暫停</string>
+    <string name="run_resume">繼續</string>
+    <string name="run_finish_now">完成</string>
+    <string name="run_remaining">剩餘</string>
+    <string name="run_next">下一個</string>
+    <string name="run_last_item">這是最後一個動作</string>
+    <string name="run_rest">休息</string>
+    <string name="run_add_weight">＋ 記重量</string>
+    <string name="run_stop_title">結束訓練？</string>
+    <string name="run_stop_message">已經完成的項目會帶到摘要，可以選擇存檔或丟棄。</string>
+    <string name="run_less">少一次</string>
+    <string name="run_more">多一次</string>
+    <string name="run_weight_down">減少重量</string>
+    <string name="run_weight_up">增加重量</string>
+
+    <!-- 快速計數 -->
+    <string name="counter_title">快速計數</string>
+    <string name="counter_name">動作名稱</string>
+    <string name="counter_target">目標次數</string>
+    <string name="counter_start">開始計數</string>
+    <string name="counter_pick">全部動作</string>
+    <string name="counter_recent">最近做過</string>
+    <string name="counter_target_hint">目標 %1$d 次</string>
+    <string name="counter_left">還剩下</string>
+    <string name="counter_done">已完成</string>
+    <string name="counter_over">超過目標 +%1$d</string>
+    <string name="counter_progress">已完成 %1$d / %2$d</string>
+    <string name="counter_undo">撤銷</string>
+    <string name="counter_finish">結束並存檔</string>
+    <string name="counter_continue">＋ 1 繼續</string>
+    <string name="counter_minus_one">− 1</string>
+    <string name="counter_minus">−%1$d</string>
+    <string name="counter_name_required">給它一個名字</string>
+    <string name="counter_target_required">目標要大於 0</string>
+
+    <!-- 摘要與紀錄 -->
+    <string name="summary_title">完成</string>
+    <string name="summary_save">存進紀錄</string>
+    <string name="summary_discard">丟棄</string>
+    <string name="summary_discard_title">丟棄這次訓練？</string>
+    <string name="summary_discard_message">這次做的內容不會留下任何紀錄。</string>
+    <string name="summary_duration">時間</string>
+    <string name="summary_reps">總次數</string>
+    <string name="summary_seconds">總秒數</string>
+    <string name="summary_no_typing">訓練全程沒有打字，這份紀錄已經寫好了。</string>
+    <string name="summary_saved">已存進紀錄</string>
+    <string name="summary_started_at">%1$s 開始</string>
+    <string name="log_done_of_target">%1$d / %2$d %3$s</string>
+
+    <string name="history_title">紀錄</string>
+    <string name="history_count">共 %1$d 次</string>
+    <string name="history_empty">還沒有任何紀錄。做完第一次訓練就會出現在這裡。</string>
+    <string name="history_counter_tag">計數</string>
+    <string name="history_minutes">%1$d 分</string>
+    <string name="history_delete_title">刪除這筆紀錄？</string>
+    <string name="session_title">訓練紀錄</string>
+
+    <!-- 動作庫 -->
+    <string name="library_title">動作庫</string>
+    <string name="library_count">%1$d 個動作</string>
+    <string name="library_empty">動作庫是空的，按右下角的＋新增。</string>
+    <string name="library_search">搜尋動作</string>
+    <string name="library_no_results">沒有符合的動作</string>
+    <string name="library_part_none">未分類</string>
+    <string name="exercise_new">新增動作</string>
+    <string name="exercise_edit_title">編輯動作</string>
+    <string name="exercise_name">名稱</string>
+    <string name="exercise_part">部位</string>
+    <string name="exercise_part_hint">例如：腿、背、核心。可以留空</string>
+    <string name="exercise_measure">計量方式</string>
+    <string name="exercise_default_target">預設目標</string>
+    <string name="exercise_default_weight">預設重量（kg，可留空）</string>
+    <string name="exercise_delete_title">刪除這個動作？</string>
+    <string name="exercise_delete_message">課表裡用到它的項目會一起移除，已存下的紀錄不受影響。</string>
+    <string name="exercise_meta_bodyweight">徒手</string>
+    <string name="exercise_meta_weight">預設 %1$s kg</string>
+    <string name="exercise_name_required">名稱不能空白</string>
+    <string name="exercise_target_required">目標要大於 0</string>
+
+    <!-- 課表編輯 -->
+    <string name="routine_edit_title">編輯課表</string>
+    <string name="routine_name">課表名稱</string>
+    <string name="routine_items">項目</string>
+    <string name="routine_items_hint">順序就是訓練順序。用 ⋯ 上移下移。</string>
+    <string name="routine_add_item">加入動作</string>
+    <string name="routine_start_now">從頭開始練</string>
+    <string name="routine_item_meta">休息 %1$d 秒</string>
+    <string name="routine_item_meta_no_rest">不休息</string>
+    <string name="routine_item_target">目標</string>
+    <string name="routine_item_rest">這一項做完休息幾秒</string>
+    <string name="routine_item_weight">重量（kg，可留空）</string>
+    <string name="routine_empty">還沒有項目，按「加入動作」開始。</string>
+    <string name="routine_name_required">課表要有名字</string>
+
+    <!-- 設定 -->
+    <string name="settings_title">設定</string>
+    <string name="settings_training">訓練</string>
+    <string name="settings_default_rest">預設組間休息（秒）</string>
+    <string name="settings_sound">倒數提示音</string>
+    <string name="settings_vibrate">歸零時震動</string>
+    <string name="settings_keep_screen_on">訓練時螢幕常亮</string>
+    <string name="settings_keep_screen_on_hint">關掉的話手機會照系統設定自己熄屏，倒數還是會繼續跑。</string>
+    <string name="settings_backup">備份</string>
+    <string name="settings_backup_hint">動作庫、課表與全部紀錄匯出成一個 JSON 檔。重複匯入同一份不會長出重複資料。</string>
+    <string name="settings_permissions">這個 App 只要求震動權限，沒有通知權限、沒有背景服務。</string>
+    <string name="settings_version">版本 %1$s</string>
+    <string name="settings_saved">已儲存</string>
+    <string name="export_done">已匯出</string>
+    <string name="export_failed">匯出失敗</string>
+    <string name="import_done">已匯入：%1$d 個動作、%2$d 張課表、%3$d 筆紀錄</string>
+    <string name="import_failed_unreadable">這個檔案讀不出來</string>
+    <string name="import_failed_not_fit">這不是 Routina Fit 的備份檔</string>
+    <string name="import_failed_newer">備份檔版本比這個 App 新，請先更新 App</string>
+
+    <!-- 星期，本週那排格子用 -->
+    <string name="weekday_today">今</string>
+</resources>
