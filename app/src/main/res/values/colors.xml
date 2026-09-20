@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 啟動圖示的底色，取自圖示本身的底色，前景疊上去才不會有接縫 -->
-    <color name="ic_launcher_background">#EDEFF3</color>
+    <color name="ic_launcher_background">#ECEEF4</color>
 </resources>
