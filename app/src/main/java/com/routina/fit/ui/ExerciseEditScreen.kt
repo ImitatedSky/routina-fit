@@ -21,17 +21,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.routina.fit.R
+import com.routina.fit.data.knownEquipment
 import com.routina.fit.data.knownParts
 import com.routina.fit.model.Exercise
 import com.routina.fit.model.Measure
@@ -57,6 +61,10 @@ fun ExerciseEditScreen(
     var weight by remember {
         mutableStateOf(existing?.defaultWeightKg?.let { formatWeight(it) }.orEmpty())
     }
+    val equipment = remember {
+        mutableStateListOf<String>().apply { addAll(existing?.equipment.orEmpty()) }
+    }
+    var newEquipment by remember { mutableStateOf("") }
     var deleting by remember { mutableStateOf(false) }
 
     val targetValue = target.toIntOrNull() ?: 0
@@ -71,7 +79,7 @@ fun ExerciseEditScreen(
                         text = stringResource(
                             if (existing == null) R.string.exercise_new else R.string.exercise_edit_title
                         ),
-                        style = MaterialTheme.typography.titleLarge.zh()
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -104,7 +112,8 @@ fun ExerciseEditScreen(
                                 measure = measure,
                                 part = part.trim(),
                                 defaultTarget = targetValue,
-                                defaultWeightKg = weight.toDoubleOrNull()?.takeIf { it > 0.0 }
+                                defaultWeightKg = weight.toDoubleOrNull()?.takeIf { it > 0.0 },
+                                equipment = equipment.toList()
                             )
                         )
                         onDone()
@@ -114,7 +123,7 @@ fun ExerciseEditScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.action_save),
-                        style = MaterialTheme.typography.titleMedium.zh()
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
             }
@@ -164,6 +173,45 @@ fun ExerciseEditScreen(
                 label = stringResource(R.string.exercise_default_weight),
                 modifier = Modifier.fillMaxWidth()
             )
+
+            SectionLabel(stringResource(R.string.exercise_equipment))
+            HintText(stringResource(R.string.exercise_equipment_hint))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 已知的器材加上這個動作自己有的（可能是剛打進去、還沒別人用過的）
+                (knownEquipment(exercises) + equipment).distinct().forEach { option ->
+                    FilterChip(
+                        selected = option in equipment,
+                        onClick = {
+                            if (option in equipment) equipment.remove(option) else equipment.add(option)
+                        },
+                        label = { Text(option) }
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newEquipment,
+                    onValueChange = { newEquipment = it },
+                    label = { Text(stringResource(R.string.exercise_equipment_new)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    enabled = newEquipment.isNotBlank(),
+                    onClick = {
+                        val value = newEquipment.trim()
+                        if (value.isNotEmpty() && value !in equipment) equipment.add(value)
+                        newEquipment = ""
+                    }
+                ) { Text(stringResource(R.string.action_add)) }
+            }
 
             SectionLabel(stringResource(R.string.exercise_part))
             OutlinedTextField(

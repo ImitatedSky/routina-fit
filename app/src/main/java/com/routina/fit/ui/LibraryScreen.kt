@@ -2,8 +2,9 @@ package com.routina.fit.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,14 +14,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,30 +38,47 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.routina.fit.R
+import com.routina.fit.data.BODYWEIGHT_FILTER
 import com.routina.fit.data.PartGroup
+import com.routina.fit.data.filterByEquipment
 import com.routina.fit.data.groupByPart
+import com.routina.fit.data.knownEquipment
 import com.routina.fit.data.searchExercises
 import com.routina.fit.model.Exercise
 
 /**
- * 整理動作的地方：依部位分組、可摺疊，每一列點進去編輯。
- * 展開狀態存在 prefs，下次進來還在——整頁照 Routina Bite 的食物庫作法。
+ * 動作庫。兩層篩選：上面一排器材晶片回答「我現在手邊有什麼」，
+ * 下面依部位分組回答「今天要練哪裡」。
+ *
+ * 搜尋或套了器材篩選時就攤平成一張清單——這時候分組只是擋路。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LibraryScreen(
     viewModel: FitViewModel,
     onEditExercise: (String) -> Unit,
     onNewExercise: () -> Unit,
-    onBack: () -> Unit
+    onCountExercise: (String) -> Unit
 ) {
     val exercises by viewModel.exercises.collectAsStateWithLifecycle()
     val expanded by viewModel.expandedParts.collectAsStateWithLifecycle()
 
     var query by remember { mutableStateOf("") }
+    var equipment by remember { mutableStateOf("") }
 
-    val groups = remember(exercises) { groupByPart(exercises) }
-    val results = searchExercises(exercises, query)
+    val equipmentOptions = remember(exercises) { knownEquipment(exercises) }
+    val byEquipment = filterByEquipment(exercises, equipment)
+    val results = searchExercises(byEquipment, query)
+    val groups = remember(byEquipment) { groupByPart(byEquipment) }
+    val flat = query.isNotBlank() || equipment.isNotEmpty()
+
+    val editLabel = stringResource(R.string.action_edit)
+    val countLabel = stringResource(R.string.action_count_this)
+
+    fun rowMenu(exercise: Exercise) = listOf(
+        editLabel to { onEditExercise(exercise.id) },
+        countLabel to { onCountExercise(exercise.id) }
+    )
 
     Scaffold(
         topBar = {
@@ -70,18 +87,17 @@ fun LibraryScreen(
                     Column {
                         Text(
                             text = stringResource(R.string.library_title),
-                            style = MaterialTheme.typography.titleLarge.zh()
+                            style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            text = stringResource(R.string.library_count, exercises.size),
-                            style = MaterialTheme.typography.bodySmall.zh(),
+                            text = if (flat) {
+                                stringResource(R.string.library_count_filtered, results.size, exercises.size)
+                            } else {
+                                stringResource(R.string.library_count, exercises.size)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back))
                     }
                 }
             )
@@ -97,7 +113,7 @@ fun LibraryScreen(
                 .fillMaxWidth()
                 .padding(padding),
             // 底部留白讓最後一筆不會被 FAB 蓋住
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             item {
@@ -110,31 +126,75 @@ fun LibraryScreen(
                 )
             }
 
-            if (exercises.isEmpty()) {
-                item { HintText(stringResource(R.string.library_empty)) }
-            } else if (query.isBlank()) {
-                partGroups(
+            item {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    EquipmentFilterChip(
+                        label = stringResource(R.string.library_filter_all),
+                        selected = equipment.isEmpty(),
+                        onClick = { equipment = "" }
+                    )
+                    EquipmentFilterChip(
+                        label = stringResource(R.string.library_filter_bodyweight),
+                        selected = equipment == BODYWEIGHT_FILTER,
+                        onClick = {
+                            equipment = if (equipment == BODYWEIGHT_FILTER) "" else BODYWEIGHT_FILTER
+                        }
+                    )
+                    equipmentOptions.forEach { option ->
+                        EquipmentFilterChip(
+                            label = option,
+                            selected = equipment == option,
+                            onClick = { equipment = if (equipment == option) "" else option }
+                        )
+                    }
+                }
+            }
+
+            when {
+                exercises.isEmpty() -> item { HintText(stringResource(R.string.library_empty)) }
+
+                results.isEmpty() -> item { HintText(stringResource(R.string.library_no_results)) }
+
+                flat -> items(results, key = { it.id }) { exercise ->
+                    ExerciseRow(
+                        exercise = exercise,
+                        onClick = { onEditExercise(exercise.id) },
+                        menu = rowMenu(exercise)
+                    )
+                }
+
+                else -> partGroups(
                     groups = groups,
                     expanded = expanded,
                     onToggle = { part -> viewModel.setPartExpanded(part, part !in expanded) },
-                    onClick = { onEditExercise(it.id) }
+                    onClick = { onEditExercise(it.id) },
+                    menu = { rowMenu(it) }
                 )
-            } else if (results.isEmpty()) {
-                item { HintText(stringResource(R.string.library_no_results)) }
-            } else {
-                items(results, key = { it.id }) { exercise ->
-                    ExerciseRow(exercise = exercise, onClick = { onEditExercise(exercise.id) })
-                }
             }
         }
     }
+}
+
+@Composable
+private fun EquipmentFilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) }
+    )
 }
 
 private fun LazyListScope.partGroups(
     groups: List<PartGroup>,
     expanded: Set<String>,
     onToggle: (String) -> Unit,
-    onClick: (Exercise) -> Unit
+    onClick: (Exercise) -> Unit,
+    menu: (Exercise) -> List<Pair<String, () -> Unit>>
 ) {
     groups.forEach { group ->
         val open = group.part in expanded
@@ -148,7 +208,11 @@ private fun LazyListScope.partGroups(
         }
         if (open) {
             items(group.exercises, key = { it.id }) { exercise ->
-                ExerciseRow(exercise = exercise, onClick = { onClick(exercise) })
+                ExerciseRow(
+                    exercise = exercise,
+                    onClick = { onClick(exercise) },
+                    menu = menu(exercise)
+                )
             }
         }
     }
@@ -161,12 +225,12 @@ private fun GroupHeader(part: String, count: Int, expanded: Boolean, onClick: ()
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(start = 4.dp, end = 4.dp, top = 10.dp, bottom = 4.dp),
+            .padding(start = 4.dp, end = 4.dp, top = 14.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = part.ifEmpty { stringResource(R.string.library_part_none) },
-            style = MaterialTheme.typography.titleSmall.zh(),
+            style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.weight(1f)
         )
         Text(
@@ -184,7 +248,11 @@ private fun GroupHeader(part: String, count: Int, expanded: Boolean, onClick: ()
 }
 
 @Composable
-private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit) {
+private fun ExerciseRow(
+    exercise: Exercise,
+    onClick: () -> Unit,
+    menu: List<Pair<String, () -> Unit>> = emptyList()
+) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
@@ -194,33 +262,61 @@ private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(
+                    start = 14.dp,
+                    end = if (menu.isEmpty()) 14.dp else 0.dp,
+                    top = 8.dp,
+                    bottom = 8.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = exercise.name, style = MaterialTheme.typography.bodyLarge.zh())
-                Text(
-                    text = measureLabel(exercise.measure) + "　·　" +
-                        (exercise.defaultWeightKg
-                            ?.let { stringResource(R.string.exercise_meta_weight, formatWeight(it)) }
-                            ?: stringResource(R.string.exercise_meta_bodyweight)),
-                    style = MaterialTheme.typography.bodySmall.zh(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(text = exercise.name, style = MaterialTheme.typography.bodyLarge)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 3.dp)
+                ) {
+                    Text(
+                        text = exercise.defaultTarget.toString() + " " + unitLabel(exercise.measure),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    EquipmentTags(exercise.equipment)
+                }
             }
-            Text(
-                text = exercise.defaultTarget.toString() + " " + unitLabel(exercise.measure),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (menu.isNotEmpty()) OverflowMenu(menu)
         }
     }
 }
 
-/** 給課表編輯頁挑動作用的對話框清單，跟動作庫的列一樣長相 */
+/** 課表編輯與快速計數挑動作時用，與動作庫的列同一個長相，只是沒有 ⋯ */
 @Composable
 fun ExercisePickerRow(exercise: Exercise, onClick: () -> Unit) {
-    Box(modifier = Modifier.padding(vertical = 2.dp)) {
-        ExerciseRow(exercise = exercise, onClick = onClick)
+    ExerciseRow(exercise = exercise, onClick = onClick)
+}
+
+/** 器材標籤。空的就標「徒手」——沒有器材本身也是一個有用的答案 */
+@Composable
+fun EquipmentTags(equipment: List<String>) {
+    if (equipment.isEmpty()) {
+        Tag(stringResource(R.string.equipment_none))
+        return
+    }
+    equipment.forEach { Tag(it) }
+}
+
+@Composable
+private fun Tag(text: String) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }

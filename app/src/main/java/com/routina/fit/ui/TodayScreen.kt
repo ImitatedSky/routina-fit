@@ -13,26 +13,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -47,18 +42,19 @@ import com.routina.fit.data.trainedDates
 import com.routina.fit.model.Routine
 
 /**
- * 首頁只有三件事：本週有沒有練、快速計數、課表清單。
- * 點課表直接進執行畫面，中間不放確認頁——換好衣服的人不會想多按一次。
+ * 首頁回答兩個問題：這週練了幾天、現在要練哪一張。
+ *
+ * 快速計數放在最下面一行文字按鈕，不做成大卡片——它是附帶功能，
+ * 每天真正會按的是課表。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(
     viewModel: FitViewModel,
     onStartRoutine: (String) -> Unit,
-    onEditRoutine: (String) -> Unit,
+    onOpenSession: (String) -> Unit,
     onCounter: () -> Unit,
-    onOpenLibrary: () -> Unit,
-    onOpenHistory: () -> Unit,
+    onOpenRoutines: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
@@ -68,41 +64,39 @@ fun TodayScreen(
     val week = remember { thisWeek() }
     val today = remember { todayDate() }
     val trained = trainedDates(sessions, week)
-
-    var deleting by remember { mutableStateOf<Routine?>(null) }
-
-    val editLabel = stringResource(R.string.action_edit)
-    val deleteLabel = stringResource(R.string.action_delete)
+    val todaySessions = sessions.filter { it.date == today }.sortedByDescending { it.startedAt }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.today_title), style = MaterialTheme.typography.titleLarge.zh()) },
+                title = {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.today_title),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            text = formatDayLabel(today),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 actions = {
-                    IconButton(onClick = onOpenLibrary) {
-                        Icon(Icons.Default.FitnessCenter, stringResource(R.string.library_title))
-                    }
-                    IconButton(onClick = onOpenHistory) {
-                        Icon(Icons.Default.History, stringResource(R.string.history_title))
-                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, stringResource(R.string.settings_title))
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { onEditRoutine(NEW_ROUTINE) }) {
-                Icon(Icons.Default.Add, stringResource(R.string.routine_new))
-            }
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
+            // 組內 6dp，段落標題自己帶 16dp 上緣——組外至少是組內的兩倍，分組才讀得出來
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             item {
                 SectionLabel(
@@ -134,41 +128,49 @@ fun TodayScreen(
                 }
             }
 
-            item { SectionLabel(stringResource(R.string.today_counter_section)) }
-            item { CounterCard(onClick = onCounter) }
-
-            item { SectionLabel(stringResource(R.string.today_routines)) }
+            item { SectionLabel(stringResource(R.string.today_start_section)) }
 
             if (routines.isEmpty()) {
-                item { HintText(stringResource(R.string.today_no_routine)) }
+                item { HintText(stringResource(R.string.today_no_routine_tab)) }
+                item {
+                    TextButton(onClick = onOpenRoutines) {
+                        Text(stringResource(R.string.routines_title))
+                    }
+                }
             } else {
                 items(routines, key = { it.id }) { routine ->
-                    RoutineRow(
+                    StartRoutineRow(
                         routine = routine,
                         minutes = estimateMinutes(routine, exercises),
-                        onClick = { onStartRoutine(routine.id) },
-                        menu = listOf(
-                            editLabel to { onEditRoutine(routine.id) },
-                            deleteLabel to { deleting = routine }
-                        )
+                        onClick = { onStartRoutine(routine.id) }
                     )
+                }
+            }
+
+            item { SectionLabel(stringResource(R.string.today_done_section)) }
+
+            if (todaySessions.isEmpty()) {
+                item { HintText(stringResource(R.string.today_nothing_yet)) }
+            } else {
+                items(todaySessions, key = { it.id }) { session ->
+                    SessionRow(
+                        session = session,
+                        onClick = { onOpenSession(session.id) }
+                    )
+                }
+            }
+
+            item {
+                TextButton(
+                    onClick = onCounter,
+                    modifier = Modifier.padding(top = 12.dp)
+                ) {
+                    Text(stringResource(R.string.today_counter))
                 }
             }
         }
     }
-
-    deleting?.let { routine ->
-        ConfirmDialog(
-            title = stringResource(R.string.routine_delete_title),
-            message = stringResource(R.string.routine_delete_message),
-            onConfirm = { viewModel.deleteRoutine(routine.id) },
-            onDismiss = { deleting = null }
-        )
-    }
 }
-
-/** 新課表用這個 id 進編輯頁，編輯頁看到它就開一張空的 */
-const val NEW_ROUTINE = "new"
 
 @Composable
 private fun WeekCell(
@@ -186,10 +188,12 @@ private fun WeekCell(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        // 有練的日子用容器色、不是飽和主色。一頁只留一個飽和元素，
+        // 這一頁的名額給「開始」，不是給日曆。
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = if (trained) {
-                MaterialTheme.colorScheme.primary
+                MaterialTheme.colorScheme.primaryContainer
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             },
@@ -204,11 +208,11 @@ private fun WeekCell(
                     trained -> Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     isToday -> Text(
                         text = stringResource(R.string.weekday_today),
-                        style = MaterialTheme.typography.labelMedium.zh(),
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -217,47 +221,12 @@ private fun WeekCell(
     }
 }
 
+/** 首頁的課表列。這裡只有一件事可做——開始——所以整列就是那顆按鈕 */
 @Composable
-private fun CounterCard(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.today_counter),
-                    style = MaterialTheme.typography.titleMedium.zh(),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = stringResource(R.string.today_counter_hint),
-                    style = MaterialTheme.typography.bodySmall.zh(),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-private fun RoutineRow(
+private fun StartRoutineRow(
     routine: Routine,
     minutes: Int,
-    onClick: () -> Unit,
-    menu: List<Pair<String, () -> Unit>>
+    onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
@@ -268,13 +237,13 @@ private fun RoutineRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = routine.name,
-                    style = MaterialTheme.typography.titleMedium.zh(),
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -284,16 +253,15 @@ private fun RoutineRow(
                     } else {
                         stringResource(R.string.routine_meta, routine.items.size, minutes)
                     },
-                    style = MaterialTheme.typography.bodySmall.zh(),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                text = stringResource(R.string.today_start),
-                style = MaterialTheme.typography.labelLarge.zh(),
-                color = MaterialTheme.colorScheme.primary
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = stringResource(R.string.today_start),
+                tint = MaterialTheme.colorScheme.primary
             )
-            OverflowMenu(menu)
         }
     }
 }

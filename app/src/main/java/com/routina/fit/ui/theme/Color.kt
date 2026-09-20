@@ -16,8 +16,12 @@ object FamilyColors {
 /**
  * 訓練狀態色：正在做一種、休息一種。
  *
- * 執行畫面會整片換色，理由是實用的——手機放在地上一公尺外，
- * 要能瞄一眼就知道現在該動還是該喘。顏色只做這件事，內容還是靠文字與數字。
+ * 執行畫面會整片換底色，理由是實用的——手機放在地上一公尺外，
+ * 要能瞄一眼就知道現在該動還是該喘。
+ *
+ * 但「整片」指的是很淡的底色，不是飽和填色：飽和色一頁只留給一個 hero
+ * （執行畫面就是那顆主要按鈕）。底色透明度取 8%（亮）／14%（暗），
+ * 這個強度在視覺研究裡與 2dp 線條等效，但安靜四倍。
  */
 private val Work = Color(0xFFB4543C)
 private val WorkDark = Color(0xFFE08066)
@@ -29,3 +33,7 @@ fun workColor(): Color = if (isSystemInDarkTheme()) WorkDark else Work
 
 @Composable
 fun restColor(): Color = if (isSystemInDarkTheme()) RestDark else Rest
+
+/** 整頁底色用的透明度。亮色主題要更淡，深色主題底下淡了就看不出來 */
+@Composable
+fun tintAlpha(): Float = if (isSystemInDarkTheme()) 0.14f else 0.08f

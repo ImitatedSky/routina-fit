@@ -22,16 +22,36 @@ fun groupByPart(exercises: List<Exercise>): List<PartGroup> {
     return named + none
 }
 
-/** 動作庫搜尋。只比名稱與部位，夠用 */
+/** 動作庫搜尋。名稱、部位、器材都比，打「啞鈴」也找得到 */
 fun searchExercises(exercises: List<Exercise>, query: String): List<Exercise> {
     val q = query.trim()
     if (q.isEmpty()) return exercises
-    return exercises.filter { it.name.contains(q, true) || it.part.contains(q, true) }
+    return exercises.filter { exercise ->
+        exercise.name.contains(q, true) ||
+            exercise.part.contains(q, true) ||
+            exercise.equipment.any { it.contains(q, true) }
+    }
 }
 
 /** 目前在用的部位名稱，編輯動作時當現成的晶片列 */
 fun knownParts(exercises: List<Exercise>): List<String> =
     exercises.map { it.part }.filter { it.isNotEmpty() }.distinct()
+
+/** 動作庫裡出現過的器材，篩選晶片與編輯頁共用 */
+fun knownEquipment(exercises: List<Exercise>): List<String> =
+    exercises.flatMap { it.equipment }.filter { it.isNotEmpty() }.distinct().sorted()
+
+/**
+ * 依器材篩選。[wanted] 空字串＝不篩，[BODYWEIGHT_FILTER] ＝只留徒手（沒有任何器材）的。
+ */
+fun filterByEquipment(exercises: List<Exercise>, wanted: String): List<Exercise> = when {
+    wanted.isEmpty() -> exercises
+    wanted == BODYWEIGHT_FILTER -> exercises.filter { it.equipment.isEmpty() }
+    else -> exercises.filter { wanted in it.equipment }
+}
+
+/** 「徒手」在篩選列上是一顆晶片，但它不是一種器材，所以用一個不會撞名的 sentinel */
+const val BODYWEIGHT_FILTER = "__bodyweight__"
 
 /**
  * 課表大概要練多久（分鐘），只是給首頁一個概念。

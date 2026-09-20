@@ -114,7 +114,7 @@ fun SettingsScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.settings_title),
-                        style = MaterialTheme.typography.titleLarge.zh()
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -136,7 +136,7 @@ fun SettingsScreen(
         ) {
             Text(
                 text = stringResource(R.string.settings_training),
-                style = MaterialTheme.typography.titleMedium.zh()
+                style = MaterialTheme.typography.titleMedium
             )
             NumberField(
                 value = rest,
@@ -174,7 +174,7 @@ fun SettingsScreen(
 
             Text(
                 text = stringResource(R.string.settings_backup),
-                style = MaterialTheme.typography.titleMedium.zh()
+                style = MaterialTheme.typography.titleMedium
             )
             HintText(stringResource(R.string.settings_backup_hint))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -202,7 +202,7 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyLarge.zh(),
+            style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f)
         )
         Switch(checked = checked, onCheckedChange = onChange)

@@ -3,7 +3,6 @@ package com.routina.fit.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +19,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -29,7 +27,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -54,16 +51,22 @@ import kotlinx.coroutines.launch
 @Composable
 fun CounterSetupScreen(
     viewModel: FitViewModel,
+    initialExerciseId: String,
     onStart: () -> Unit,
     onBack: () -> Unit
 ) {
     val exercises by viewModel.exercises.collectAsStateWithLifecycle()
     val sessions by viewModel.sessions.collectAsStateWithLifecycle()
 
-    var name by remember { mutableStateOf("") }
-    var target by remember { mutableStateOf(DEFAULT_TARGET) }
-    var pickedId by remember { mutableStateOf("") }
-    var pickedPart by remember { mutableStateOf("") }
+    // 從動作庫的「計數」進來時表單已經填好，直接按開始就好
+    val initial = remember(initialExerciseId) {
+        initialExerciseId.takeIf { it.isNotEmpty() }?.let { viewModel.findExercise(it) }
+    }
+
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var target by remember { mutableStateOf(initial?.defaultTarget?.toString() ?: DEFAULT_TARGET) }
+    var pickedId by remember { mutableStateOf(initial?.id.orEmpty()) }
+    var pickedPart by remember { mutableStateOf(initial?.part.orEmpty()) }
     var query by remember { mutableStateOf("") }
 
     val listState = rememberLazyListState()
@@ -93,7 +96,7 @@ fun CounterSetupScreen(
                 title = {
                     Text(
                         text = stringResource(R.string.counter_title),
-                        style = MaterialTheme.typography.titleLarge.zh()
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -125,7 +128,7 @@ fun CounterSetupScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.counter_start),
-                        style = MaterialTheme.typography.titleMedium.zh()
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
             }
@@ -170,7 +173,7 @@ fun CounterSetupScreen(
             if (recent.isNotEmpty() && query.isBlank()) {
                 item { SectionLabel(stringResource(R.string.counter_recent)) }
                 items(recent, key = { "recent-" + it.id }) { exercise ->
-                    PickRow(exercise = exercise, onClick = { pick(exercise) })
+                    ExercisePickerRow(exercise = exercise, onClick = { pick(exercise) })
                 }
             }
 
@@ -191,42 +194,9 @@ fun CounterSetupScreen(
                 item { HintText(stringResource(R.string.library_no_results)) }
             } else {
                 items(results, key = { it.id }) { exercise ->
-                    PickRow(exercise = exercise, onClick = { pick(exercise) })
+                    ExercisePickerRow(exercise = exercise, onClick = { pick(exercise) })
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun PickRow(exercise: Exercise, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = exercise.name, style = MaterialTheme.typography.bodyLarge.zh())
-                if (exercise.part.isNotEmpty()) {
-                    Text(
-                        text = exercise.part,
-                        style = MaterialTheme.typography.bodySmall.zh(),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Text(
-                text = exercise.defaultTarget.toString() + " " + stringResource(R.string.unit_reps),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

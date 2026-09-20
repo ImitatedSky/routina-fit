@@ -2,8 +2,6 @@ package com.routina.fit.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.sp
 import com.routina.fit.R
 import com.routina.fit.data.parseDate
 import com.routina.fit.model.Measure
@@ -56,9 +54,3 @@ fun formatTime(epochMillis: Long): String =
 /** 這一天是星期幾的單字，今日頁那排格子用 */
 fun weekdayLetter(date: String): String =
     parseDate(date).dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.TAIWAN)
-
-/**
- * 中文不需要 Material 預設的字距，靠得太開會散。
- * 只在中文為主的文字上套，數字與英文維持原樣。
- */
-fun TextStyle.zh(): TextStyle = copy(letterSpacing = 0.sp)

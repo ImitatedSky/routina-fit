@@ -96,7 +96,7 @@ fun RoutineEditScreen(
                         text = stringResource(
                             if (existing == null) R.string.routine_new else R.string.routine_edit_title
                         ),
-                        style = MaterialTheme.typography.titleLarge.zh()
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -121,7 +121,7 @@ fun RoutineEditScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.action_save),
-                        style = MaterialTheme.typography.titleMedium.zh()
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
                 if (items.isNotEmpty()) {
@@ -239,7 +239,7 @@ private fun ItemRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = exercise?.name.orEmpty(),
-                    style = MaterialTheme.typography.bodyLarge.zh()
+                    style = MaterialTheme.typography.bodyLarge
                 )
                 val restText = if (item.restSec > 0) {
                     stringResource(R.string.routine_item_meta, item.restSec)
@@ -251,7 +251,7 @@ private fun ItemRow(
                     .orEmpty()
                 Text(
                     text = restText + weightText,
-                    style = MaterialTheme.typography.bodySmall.zh(),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -280,7 +280,7 @@ private fun ExercisePickerDialog(
         title = {
             Text(
                 text = stringResource(R.string.routine_add_item),
-                style = MaterialTheme.typography.titleLarge.zh()
+                style = MaterialTheme.typography.titleLarge
             )
         },
         text = {
@@ -334,7 +334,7 @@ private fun ItemEditDialog(
         title = {
             Text(
                 text = exercise?.name.orEmpty(),
-                style = MaterialTheme.typography.titleLarge.zh()
+                style = MaterialTheme.typography.titleLarge
             )
         },
         text = {

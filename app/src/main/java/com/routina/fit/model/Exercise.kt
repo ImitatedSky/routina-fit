@@ -16,6 +16,9 @@ enum class Measure { REPS, SECONDS }
  *
  * [defaultWeightKg] 允許為 null：徒手動作沒有重量，而且種子資料裡一律是 null——
  * 原始訓練表沒有重量欄，值要由使用者自己在第一次訓練時填。
+ *
+ * [equipment] 是要用到的工具。空清單就是徒手——不另外給「徒手」這個值，
+ * 免得出現「徒手＋啞鈴」這種自相矛盾的組合。
  */
 @Serializable
 data class Exercise(
@@ -24,5 +27,6 @@ data class Exercise(
     val measure: Measure = Measure.REPS,
     val part: String = "",
     val defaultTarget: Int = 12,
-    val defaultWeightKg: Double? = null
+    val defaultWeightKg: Double? = null,
+    val equipment: List<String> = emptyList()
 )

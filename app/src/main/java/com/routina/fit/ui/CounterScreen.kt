@@ -32,12 +32,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.routina.fit.R
+import com.routina.fit.ui.theme.bigNumber
 import com.routina.fit.ui.theme.restColor
 import com.routina.fit.ui.theme.workColor
 
@@ -73,7 +72,7 @@ fun CounterScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(current.name, style = MaterialTheme.typography.titleMedium.zh())
+                        Text(current.name, style = MaterialTheme.typography.titleMedium)
                         Text(
                             text = stringResource(R.string.counter_target_hint, current.target),
                             style = MaterialTheme.typography.bodySmall,
@@ -166,7 +165,7 @@ fun CounterScreen(
                     ) {
                         Text(
                             text = current.part,
-                            style = MaterialTheme.typography.labelMedium.zh(),
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                         )
@@ -175,10 +174,7 @@ fun CounterScreen(
 
                 Text(
                     text = if (current.finished) current.done.toString() else current.left.toString(),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = if (current.finished) FINISHED_SP.sp else BIG_SP.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
+                    style = bigNumber(if (current.finished) FINISHED_SP else BIG_SP),
                     color = if (current.finished) accent else MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -189,7 +185,7 @@ fun CounterScreen(
                         current.finished -> stringResource(R.string.counter_done)
                         else -> stringResource(R.string.counter_left)
                     },
-                    style = MaterialTheme.typography.bodyMedium.zh(),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (current.finished) accent else MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -203,7 +199,7 @@ fun CounterScreen(
                 )
                 Text(
                     text = stringResource(R.string.counter_progress, current.done, current.target),
-                    style = MaterialTheme.typography.bodySmall.zh(),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
                 )

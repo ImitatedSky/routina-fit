@@ -5,14 +5,32 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Today
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.routina.fit.ui.CounterScreen
@@ -21,7 +39,9 @@ import com.routina.fit.ui.ExerciseEditScreen
 import com.routina.fit.ui.FitViewModel
 import com.routina.fit.ui.HistoryScreen
 import com.routina.fit.ui.LibraryScreen
+import com.routina.fit.ui.NEW_ROUTINE
 import com.routina.fit.ui.RoutineEditScreen
+import com.routina.fit.ui.RoutinesScreen
 import com.routina.fit.ui.RunScreen
 import com.routina.fit.ui.SessionScreen
 import com.routina.fit.ui.SettingsScreen
@@ -40,24 +60,35 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    FitNavHost()
+                    FitRoot()
                 }
             }
         }
     }
 }
 
+/** 底部分頁。四個都是「看東西」的地方，動手的畫面（執行、計數、編輯）一律全螢幕蓋上去 */
+private enum class Tab(val route: String, val label: Int, val icon: ImageVector) {
+    TODAY(Routes.TODAY, R.string.tab_today, Icons.Default.Today),
+    ROUTINES(Routes.ROUTINES, R.string.tab_routines, Icons.AutoMirrored.Filled.ListAlt),
+    LIBRARY(Routes.LIBRARY, R.string.tab_library, Icons.Default.FitnessCenter),
+    HISTORY(Routes.HISTORY, R.string.tab_history, Icons.Default.History)
+}
+
 private object Routes {
     const val TODAY = "today"
+    const val ROUTINES = "routines"
+    const val LIBRARY = "library"
+    const val HISTORY = "history"
+
     const val RUN = "run"
     const val SUMMARY = "summary"
-    const val COUNTER_SETUP = "counter/new"
     const val COUNTER = "counter"
-    const val LIBRARY = "library"
-    const val EXERCISE_NEW = "exercise/new"
-    const val HISTORY = "history"
     const val SETTINGS = "settings"
+    const val EXERCISE_NEW = "exercise/new"
 
+    // counter/new?exerciseId=xxx —— 從動作列的「計數」進來時會帶 id，首頁進來時不帶
+    const val COUNTER_SETUP = "counter/new?exerciseId={exerciseId}"
     const val EXERCISE_EDIT = "exercise/{exerciseId}"
     const val ROUTINE_EDIT = "routine/{routineId}"
     const val SESSION = "session/{sessionId}"
@@ -66,142 +97,202 @@ private object Routes {
     const val ARG_ROUTINE_ID = "routineId"
     const val ARG_SESSION_ID = "sessionId"
 
+    fun counterSetup(exerciseId: String = "") = "counter/new?exerciseId=$exerciseId"
     fun exercise(id: String) = "exercise/$id"
     fun routine(id: String) = "routine/$id"
     fun session(id: String) = "session/$id"
 }
 
 @Composable
-private fun FitNavHost() {
+private fun FitRoot() {
     val navController = rememberNavController()
     val viewModel: FitViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = Routes.TODAY) {
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = backStackEntry?.destination
+    val onTab = currentDestination?.hierarchy?.any { destination ->
+        Tab.entries.any { it.route == destination.route }
+    } == true
 
-        composable(Routes.TODAY) {
-            TodayScreen(
-                viewModel = viewModel,
-                onStartRoutine = { routineId ->
-                    if (viewModel.startRoutine(routineId)) navController.navigate(Routes.RUN)
-                },
-                onEditRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
-                onCounter = { navController.navigate(Routes.COUNTER_SETUP) },
-                onOpenLibrary = { navController.navigate(Routes.LIBRARY) },
-                onOpenHistory = { navController.navigate(Routes.HISTORY) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
-            )
-        }
-
-        // 執行中與摘要都靠 ViewModel 裡那一份 RunState，路由本身不帶參數。
-        // 練完（phase 變成 DONE）由 RunScreen 換到摘要，並把自己從返回堆疊移掉。
-        composable(Routes.RUN) {
-            RunScreen(
-                viewModel = viewModel,
-                onDone = {
-                    navController.navigate(Routes.SUMMARY) {
-                        popUpTo(Routes.RUN) { inclusive = true }
+    Scaffold(
+        bottomBar = {
+            // 執行、計數、編輯這些全螢幕的畫面不顯示分頁列——它們是任務，不是地方
+            if (onTab) {
+                NavigationBar {
+                    Tab.entries.forEach { tab ->
+                        val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { navController.switchTab(tab.route) },
+                            icon = { Icon(tab.icon, contentDescription = null) },
+                            label = { Text(stringResource(tab.label)) }
+                        )
                     }
-                },
-                onQuit = { navController.popBackStack(Routes.TODAY, inclusive = false) }
-            )
+                }
+            }
         }
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = Routes.TODAY,
+            // 分頁列的高度由 Scaffold 給，全螢幕畫面自己用 Scaffold 處理插入邊
+            modifier = if (onTab) Modifier.padding(padding) else Modifier
+        ) {
 
-        composable(Routes.SUMMARY) {
-            SummaryScreen(
-                viewModel = viewModel,
-                onClose = { navController.popBackStack(Routes.TODAY, inclusive = false) }
-            )
-        }
+            composable(Routes.TODAY) {
+                TodayScreen(
+                    viewModel = viewModel,
+                    onStartRoutine = { routineId ->
+                        if (viewModel.startRoutine(routineId)) navController.navigate(Routes.RUN)
+                    },
+                    onOpenSession = { id -> navController.navigate(Routes.session(id)) },
+                    onCounter = { navController.navigate(Routes.counterSetup()) },
+                    onOpenRoutines = { navController.switchTab(Routes.ROUTINES) },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                )
+            }
 
-        composable(Routes.COUNTER_SETUP) {
-            CounterSetupScreen(
-                viewModel = viewModel,
-                onStart = {
-                    navController.navigate(Routes.COUNTER) {
-                        popUpTo(Routes.COUNTER_SETUP) { inclusive = true }
+            composable(Routes.ROUTINES) {
+                RoutinesScreen(
+                    viewModel = viewModel,
+                    onEditRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
+                    onStartRoutine = { routineId ->
+                        if (viewModel.startRoutine(routineId)) navController.navigate(Routes.RUN)
                     }
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
+                )
+            }
 
-        composable(Routes.COUNTER) {
-            CounterScreen(
-                viewModel = viewModel,
-                onClose = { navController.popBackStack(Routes.TODAY, inclusive = false) }
-            )
-        }
+            composable(Routes.LIBRARY) {
+                LibraryScreen(
+                    viewModel = viewModel,
+                    onEditExercise = { id -> navController.navigate(Routes.exercise(id)) },
+                    onNewExercise = { navController.navigate(Routes.EXERCISE_NEW) },
+                    onCountExercise = { id -> navController.navigate(Routes.counterSetup(id)) }
+                )
+            }
 
-        composable(Routes.LIBRARY) {
-            LibraryScreen(
-                viewModel = viewModel,
-                onEditExercise = { id -> navController.navigate(Routes.exercise(id)) },
-                onNewExercise = { navController.navigate(Routes.EXERCISE_NEW) },
-                onBack = { navController.popBackStack() }
-            )
-        }
+            composable(Routes.HISTORY) {
+                HistoryScreen(
+                    viewModel = viewModel,
+                    onOpenSession = { id -> navController.navigate(Routes.session(id)) }
+                )
+            }
 
-        composable(Routes.EXERCISE_NEW) {
-            ExerciseEditScreen(
-                viewModel = viewModel,
-                exerciseId = null,
-                onDone = { navController.popBackStack() }
-            )
-        }
-
-        composable(
-            route = Routes.EXERCISE_EDIT,
-            arguments = listOf(navArgument(Routes.ARG_EXERCISE_ID) { type = NavType.StringType })
-        ) { entry ->
-            ExerciseEditScreen(
-                viewModel = viewModel,
-                exerciseId = entry.arguments?.getString(Routes.ARG_EXERCISE_ID),
-                onDone = { navController.popBackStack() }
-            )
-        }
-
-        composable(
-            route = Routes.ROUTINE_EDIT,
-            arguments = listOf(navArgument(Routes.ARG_ROUTINE_ID) { type = NavType.StringType })
-        ) { entry ->
-            RoutineEditScreen(
-                viewModel = viewModel,
-                routineId = entry.arguments?.getString(Routes.ARG_ROUTINE_ID).orEmpty(),
-                onStart = { routineId ->
-                    if (viewModel.startRoutine(routineId)) {
-                        navController.navigate(Routes.RUN) {
-                            popUpTo(Routes.TODAY) { inclusive = false }
+            // 執行中與摘要都靠 ViewModel 裡那一份 RunState，路由本身不帶參數。
+            // 練完（phase 變成 DONE）由 RunScreen 換到摘要，並把自己從返回堆疊移掉。
+            composable(Routes.RUN) {
+                RunScreen(
+                    viewModel = viewModel,
+                    onDone = {
+                        navController.navigate(Routes.SUMMARY) {
+                            popUpTo(Routes.RUN) { inclusive = true }
                         }
+                    },
+                    onQuit = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.SUMMARY) {
+                SummaryScreen(
+                    viewModel = viewModel,
+                    onClose = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Routes.COUNTER_SETUP,
+                arguments = listOf(
+                    navArgument(Routes.ARG_EXERCISE_ID) {
+                        type = NavType.StringType
+                        defaultValue = ""
                     }
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
+                )
+            ) { entry ->
+                CounterSetupScreen(
+                    viewModel = viewModel,
+                    initialExerciseId = entry.arguments?.getString(Routes.ARG_EXERCISE_ID).orEmpty(),
+                    onStart = {
+                        navController.navigate(Routes.COUNTER) {
+                            popUpTo(Routes.COUNTER_SETUP) { inclusive = true }
+                        }
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
 
-        composable(Routes.HISTORY) {
-            HistoryScreen(
-                viewModel = viewModel,
-                onOpenSession = { id -> navController.navigate(Routes.session(id)) },
-                onBack = { navController.popBackStack() }
-            )
-        }
+            composable(Routes.COUNTER) {
+                CounterScreen(
+                    viewModel = viewModel,
+                    onClose = { navController.popBackStack() }
+                )
+            }
 
-        composable(
-            route = Routes.SESSION,
-            arguments = listOf(navArgument(Routes.ARG_SESSION_ID) { type = NavType.StringType })
-        ) { entry ->
-            SessionScreen(
-                viewModel = viewModel,
-                sessionId = entry.arguments?.getString(Routes.ARG_SESSION_ID).orEmpty(),
-                onBack = { navController.popBackStack() }
-            )
-        }
+            composable(Routes.EXERCISE_NEW) {
+                ExerciseEditScreen(
+                    viewModel = viewModel,
+                    exerciseId = null,
+                    onDone = { navController.popBackStack() }
+                )
+            }
 
-        composable(Routes.SETTINGS) {
-            SettingsScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
-            )
+            composable(
+                route = Routes.EXERCISE_EDIT,
+                arguments = listOf(navArgument(Routes.ARG_EXERCISE_ID) { type = NavType.StringType })
+            ) { entry ->
+                ExerciseEditScreen(
+                    viewModel = viewModel,
+                    exerciseId = entry.arguments?.getString(Routes.ARG_EXERCISE_ID),
+                    onDone = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Routes.ROUTINE_EDIT,
+                arguments = listOf(navArgument(Routes.ARG_ROUTINE_ID) { type = NavType.StringType })
+            ) { entry ->
+                RoutineEditScreen(
+                    viewModel = viewModel,
+                    routineId = entry.arguments?.getString(Routes.ARG_ROUTINE_ID) ?: NEW_ROUTINE,
+                    onStart = { routineId ->
+                        if (viewModel.startRoutine(routineId)) {
+                            navController.navigate(Routes.RUN) {
+                                popUpTo(Routes.ROUTINES) { inclusive = false }
+                            }
+                        }
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Routes.SESSION,
+                arguments = listOf(navArgument(Routes.ARG_SESSION_ID) { type = NavType.StringType })
+            ) { entry ->
+                SessionScreen(
+                    viewModel = viewModel,
+                    sessionId = entry.arguments?.getString(Routes.ARG_SESSION_ID).orEmpty(),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
+    }
+}
+
+/**
+ * 切分頁的標準作法：回到起始分頁再上去，並存/還原各分頁自己的捲動位置，
+ * 連點同一顆也不會疊出一堆同樣的畫面。
+ */
+private fun NavHostController.switchTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

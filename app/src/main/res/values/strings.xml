@@ -2,6 +2,12 @@
 <resources>
     <string name="app_name">Routina Fit</string>
 
+    <!-- 底部分頁 -->
+    <string name="tab_today">今天</string>
+    <string name="tab_routines">課表</string>
+    <string name="tab_library">動作</string>
+    <string name="tab_history">紀錄</string>
+
     <!-- 共用動作 -->
     <string name="action_back">返回</string>
     <string name="action_more">更多</string>
@@ -29,13 +35,19 @@
     <string name="today_week_count">練了 %1$d 天</string>
     <string name="today_no_routine">按右下角的＋建一張課表</string>
     <string name="today_routines">課表</string>
-    <string name="today_counter_section">不用課表</string>
     <string name="today_counter">快速計數</string>
-    <string name="today_counter_hint">選一個動作、給一個目標，扣到 0</string>
     <string name="today_start">開始</string>
+    <string name="today_start_section">開始訓練</string>
+    <string name="today_done_section">今天做了什麼</string>
+    <string name="today_nothing_yet">今天還沒練。挑一張課表開始。</string>
+    <string name="today_no_routine_tab">還沒有課表。到「課表」分頁建一張。</string>
+    <string name="today_session_summary">%1$d 分 · %2$d 次</string>
     <string name="routine_meta">%1$d 個動作 · 約 %2$d 分</string>
     <string name="routine_empty_meta">還沒有動作</string>
     <string name="routine_new">新增課表</string>
+    <string name="routines_title">課表</string>
+    <string name="routines_count">%1$d 張</string>
+    <string name="routines_empty">還沒有課表，按右下角的＋建一張。</string>
     <string name="routine_delete_title">刪除這張課表？</string>
     <string name="routine_delete_message">已經存下的訓練紀錄不受影響。</string>
 
@@ -110,11 +122,19 @@
     <string name="library_search">搜尋動作</string>
     <string name="library_no_results">沒有符合的動作</string>
     <string name="library_part_none">未分類</string>
+    <string name="library_filter_all">全部</string>
+    <string name="library_filter_bodyweight">徒手</string>
+    <string name="library_count_filtered">%1$d / %2$d 個動作</string>
+    <string name="action_count_this">計數</string>
     <string name="exercise_new">新增動作</string>
     <string name="exercise_edit_title">編輯動作</string>
     <string name="exercise_name">名稱</string>
     <string name="exercise_part">部位</string>
     <string name="exercise_part_hint">例如：腿、背、核心。可以留空</string>
+    <string name="exercise_equipment">要用到的工具</string>
+    <string name="exercise_equipment_hint">不選就是徒手。點一下切換，也可以自己打新的。</string>
+    <string name="exercise_equipment_new">新增工具</string>
+    <string name="equipment_none">徒手</string>
     <string name="exercise_measure">計量方式</string>
     <string name="exercise_default_target">預設目標</string>
     <string name="exercise_default_weight">預設重量（kg，可留空）</string>

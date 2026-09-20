@@ -76,6 +76,8 @@ class FitRepository(context: Context) {
         // 種子資料要立刻落地，不然「使用者自己刪光」與「還沒載過」下次啟動就分不出來
         if (seededExercises && _exercises.value.isNotEmpty()) persistExercises()
         if (seededRoutines && _routines.value.isNotEmpty()) persistRoutines()
+
+        migrateSeed(freshInstall = seededExercises)
     }
 
     // ---------- 載入 ----------
@@ -94,15 +96,47 @@ class FitRepository(context: Context) {
             assign(readList(file, ListSerializer(serializer)))
             return false
         }
-        val seed = try {
-            appContext.assets.open(asset).bufferedReader().use { reader ->
-                json.decodeFromString(ListSerializer(serializer), reader.readText())
-            }
-        } catch (t: Throwable) {
-            emptyList()
-        }
-        assign(seed)
+        assign(readAsset(asset, serializer))
         return true
+    }
+
+    /**
+     * 種子欄位的一次性補齊。
+     *
+     * 舊版裝好之後才長出來的欄位（例如 0.2.0 的器材），檔案裡是空的，
+     * 而種子只在首次啟動載入，所以要在這裡把內建動作缺的欄位補回去。
+     * 只補「使用者沒填過」的，不覆蓋任何已有的值；跑過就把版本寫進 prefs，不再重跑。
+     */
+    private fun migrateSeed(freshInstall: Boolean) {
+        val done = prefs.getInt(KEY_SEED_VERSION, 0)
+        if (done >= SEED_VERSION) return
+        // 全新安裝的資料就是最新的種子，不必補
+        if (!freshInstall) backfillEquipment()
+        prefs.edit().putInt(KEY_SEED_VERSION, SEED_VERSION).apply()
+    }
+
+    private fun backfillEquipment() {
+        val seed = readAsset(ASSET_EXERCISES, Exercise.serializer()).associateBy { it.id }
+        if (seed.isEmpty()) return
+        var changed = false
+        _exercises.value = _exercises.value.map { exercise ->
+            val fromSeed = seed[exercise.id]
+            if (exercise.equipment.isEmpty() && fromSeed != null && fromSeed.equipment.isNotEmpty()) {
+                changed = true
+                exercise.copy(equipment = fromSeed.equipment)
+            } else {
+                exercise
+            }
+        }
+        if (changed) persistExercises()
+    }
+
+    private fun <T> readAsset(asset: String, serializer: KSerializer<T>): List<T> = try {
+        appContext.assets.open(asset).bufferedReader().use { reader ->
+            json.decodeFromString(ListSerializer(serializer), reader.readText())
+        }
+    } catch (t: Throwable) {
+        emptyList()
     }
 
     private fun <T> readList(file: File, serializer: KSerializer<List<T>>): List<T> = try {
@@ -300,12 +334,16 @@ class FitRepository(context: Context) {
         const val ASSET_EXERCISES = "seed_exercises.json"
         const val ASSET_ROUTINES = "seed_routines.json"
 
+        /** 種子欄位的版本。內建資料多了新欄位時 +1，見 migrateSeed */
+        const val SEED_VERSION = 2
+
         const val PREFS_NAME = "routina_fit"
         const val KEY_DEFAULT_REST = "default_rest"
         const val KEY_SOUND = "sound"
         const val KEY_VIBRATE = "vibrate"
         const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         const val KEY_EXPANDED_PARTS = "expanded_parts"
+        const val KEY_SEED_VERSION = "seed_version"
         const val NONE_PART_KEY = "__none__"
     }
 }

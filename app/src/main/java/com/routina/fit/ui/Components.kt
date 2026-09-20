@@ -43,8 +43,8 @@ fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, style = MaterialTheme.typography.headlineSmall.zh()) },
-        text = message?.let { { Text(it, style = MaterialTheme.typography.bodyMedium.zh()) } },
+        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+        text = message?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
         confirmButton = {
             TextButton(onClick = { onDismiss(); onConfirm() }) { Text(confirmLabel) }
         },
@@ -125,9 +125,9 @@ fun NumberField(
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge.zh(),
+        style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(top = 8.dp, bottom = 4.dp)
+        modifier = modifier.padding(top = 16.dp, bottom = 2.dp)
     )
 }
 
@@ -135,7 +135,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 fun HintText(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium.zh(),
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
     )
@@ -152,7 +152,7 @@ fun StatRow(stats: List<Pair<String, String>>, modifier: Modifier = Modifier) {
             Column {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelMedium.zh(),
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(text = value, style = MaterialTheme.typography.headlineSmall)

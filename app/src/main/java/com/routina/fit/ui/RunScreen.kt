@@ -41,14 +41,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.routina.fit.R
 import com.routina.fit.model.Measure
+import com.routina.fit.ui.theme.bigNumber
 import com.routina.fit.ui.theme.restColor
+import com.routina.fit.ui.theme.tintAlpha
 import com.routina.fit.ui.theme.workColor
 
 /**
@@ -90,7 +90,7 @@ fun RunScreen(
         // 休息的底色交給 Scaffold，才會連底部按鈕列一起換；
         // 只染內容區的話中間會出現一條接縫
         containerColor = if (resting) {
-            accent.copy(alpha = REST_TINT)
+            accent.copy(alpha = tintAlpha())
         } else {
             MaterialTheme.colorScheme.background
         },
@@ -100,7 +100,7 @@ fun RunScreen(
                     Column {
                         Text(
                             text = current.routineName,
-                            style = MaterialTheme.typography.titleMedium.zh()
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
                             text = stringResource(
@@ -203,7 +203,7 @@ private fun WorkBody(
             ) {
                 Text(
                     text = item.part,
-                    style = MaterialTheme.typography.labelMedium.zh(),
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                 )
@@ -211,7 +211,7 @@ private fun WorkBody(
         }
         Text(
             text = item.name,
-            style = MaterialTheme.typography.headlineSmall.zh(),
+            style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 12.dp)
         )
@@ -221,7 +221,7 @@ private fun WorkBody(
             Text(
                 text = stringResource(R.string.unit_seconds) + "　" +
                     stringResource(R.string.run_remaining),
-                style = MaterialTheme.typography.bodyMedium.zh(),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
@@ -246,7 +246,7 @@ private fun WorkBody(
             }
             Text(
                 text = stringResource(R.string.unit_reps),
-                style = MaterialTheme.typography.bodyMedium.zh(),
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -267,7 +267,7 @@ private fun RestBody(state: RunState, accent: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = stringResource(R.string.run_rest),
-            style = MaterialTheme.typography.titleMedium.zh(),
+            style = MaterialTheme.typography.titleMedium,
             color = accent
         )
         BigNumber(text = formatClock(state.remaining), color = accent)
@@ -275,12 +275,12 @@ private fun RestBody(state: RunState, accent: Color) {
             Spacer(Modifier.height(24.dp))
             Text(
                 text = stringResource(R.string.run_next),
-                style = MaterialTheme.typography.labelMedium.zh(),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = next.name,
-                style = MaterialTheme.typography.titleLarge.zh(),
+                style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -382,7 +382,7 @@ private fun NextUpLine(state: RunState) {
         } else {
             stringResource(R.string.run_next) + "　" + next.name + "　" + next.target + " " + unit
         },
-        style = MaterialTheme.typography.bodySmall.zh(),
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth()
@@ -399,7 +399,7 @@ private fun PrimaryButton(text: String, color: Color, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(64.dp)
     ) {
-        Text(text = text, style = MaterialTheme.typography.titleLarge.zh())
+        Text(text = text, style = MaterialTheme.typography.titleLarge)
     }
 }
 
@@ -415,7 +415,7 @@ private fun WeightControl(
 ) {
     if (weightKg == null) {
         OutlinedButton(onClick = onEdit, shape = CircleShape) {
-            Text(stringResource(R.string.run_add_weight), style = MaterialTheme.typography.bodyMedium.zh())
+            Text(stringResource(R.string.run_add_weight), style = MaterialTheme.typography.bodyMedium)
         }
         return
     }
@@ -450,7 +450,7 @@ private fun WeightDialog(
     var text by remember { mutableStateOf(current?.let { formatWeight(it) }.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, style = MaterialTheme.typography.titleLarge.zh()) },
+        title = { Text(title, style = MaterialTheme.typography.titleLarge) },
         text = {
             NumberField(
                 value = text,
@@ -475,16 +475,12 @@ private fun WeightDialog(
 private fun BigNumber(text: String, color: Color) {
     Text(
         text = text,
-        style = MaterialTheme.typography.displayLarge.copy(
-            fontSize = BIG_NUMBER_SP.sp,
-            fontWeight = FontWeight.Bold
-        ),
+        style = bigNumber(BIG_NUMBER_SP),
         color = color,
-        modifier = Modifier.padding(vertical = 4.dp)
+        modifier = Modifier.padding(vertical = 8.dp)
     )
 }
 
 private const val EXTEND_SECONDS = 15
 private const val WEIGHT_STEP = 2.5
-private const val REST_TINT = 0.12f
 private const val BIG_NUMBER_SP = 88

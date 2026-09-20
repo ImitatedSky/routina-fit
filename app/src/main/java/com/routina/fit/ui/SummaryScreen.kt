@@ -57,7 +57,7 @@ fun SummaryScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(current.routineName, style = MaterialTheme.typography.titleMedium.zh())
+                        Text(current.routineName, style = MaterialTheme.typography.titleMedium)
                         Text(
                             text = stringResource(
                                 R.string.summary_started_at,
@@ -84,7 +84,7 @@ fun SummaryScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.summary_save),
-                        style = MaterialTheme.typography.titleMedium.zh()
+                        style = MaterialTheme.typography.titleMedium
                     )
                 }
                 OutlinedButton(

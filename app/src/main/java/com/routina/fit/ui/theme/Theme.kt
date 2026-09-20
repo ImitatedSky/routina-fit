@@ -48,6 +48,7 @@ fun FitTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = FitTypography,
         content = content
     )
 }
