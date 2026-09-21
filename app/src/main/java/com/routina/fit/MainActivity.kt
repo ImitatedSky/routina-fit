@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PlusOne
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,8 +24,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -67,11 +68,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** 底部分頁。四個都是「看東西」的地方，動手的畫面（執行、計數、編輯）一律全螢幕蓋上去 */
+/**
+ * 底部分頁。執行、摘要、編輯這些是任務不是地方，一律全螢幕蓋上去。
+ *
+ * 計數是個中間狀態：設定要數什麼是「地方」，所以給它一個分頁；真的在數的時候是「任務」，
+ * 分頁列會收起來——`＋1` 要連按幾十下，下面緊貼分頁列的話手指低一點就切走了。
+ */
 private enum class Tab(val route: String, val label: Int, val icon: ImageVector) {
     TODAY(Routes.TODAY, R.string.tab_today, Icons.Default.Today),
     ROUTINES(Routes.ROUTINES, R.string.tab_routines, Icons.AutoMirrored.Filled.ListAlt),
     LIBRARY(Routes.LIBRARY, R.string.tab_library, Icons.Default.FitnessCenter),
+    COUNTER(Routes.COUNTER, R.string.tab_counter, Icons.Default.PlusOne),
     HISTORY(Routes.HISTORY, R.string.tab_history, Icons.Default.History)
 }
 
@@ -87,8 +94,6 @@ private object Routes {
     const val SETTINGS = "settings"
     const val EXERCISE_NEW = "exercise/new"
 
-    // counter/new?exerciseId=xxx —— 從動作列的「計數」進來時會帶 id，首頁進來時不帶
-    const val COUNTER_SETUP = "counter/new?exerciseId={exerciseId}"
     const val EXERCISE_EDIT = "exercise/{exerciseId}"
     const val ROUTINE_EDIT = "routine/{routineId}"
     const val SESSION = "session/{sessionId}"
@@ -97,7 +102,6 @@ private object Routes {
     const val ARG_ROUTINE_ID = "routineId"
     const val ARG_SESSION_ID = "sessionId"
 
-    fun counterSetup(exerciseId: String = "") = "counter/new?exerciseId=$exerciseId"
     fun exercise(id: String) = "exercise/$id"
     fun routine(id: String) = "routine/$id"
     fun session(id: String) = "session/$id"
@@ -108,11 +112,14 @@ private fun FitRoot() {
     val navController = rememberNavController()
     val viewModel: FitViewModel = viewModel()
 
+    // 分頁全是頂層路由，直接比 route 就夠，不需要走 hierarchy
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = backStackEntry?.destination
-    val onTab = currentDestination?.hierarchy?.any { destination ->
-        Tab.entries.any { it.route == destination.route }
-    } == true
+    val currentRoute = backStackEntry?.destination?.route
+
+    // 正在數的時候把分頁列收起來，避免連按 ＋1 時誤觸切走
+    val counting by viewModel.counter.collectAsStateWithLifecycle()
+    val onTab = Tab.entries.any { it.route == currentRoute } &&
+        !(currentRoute == Routes.COUNTER && counting != null)
 
     Scaffold(
         bottomBar = {
@@ -120,9 +127,8 @@ private fun FitRoot() {
             if (onTab) {
                 NavigationBar {
                     Tab.entries.forEach { tab ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
                         NavigationBarItem(
-                            selected = selected,
+                            selected = tab.route == currentRoute,
                             onClick = { navController.switchTab(tab.route) },
                             icon = { Icon(tab.icon, contentDescription = null) },
                             label = { Text(stringResource(tab.label)) }
@@ -146,7 +152,6 @@ private fun FitRoot() {
                         if (viewModel.startRoutine(routineId)) navController.navigate(Routes.RUN)
                     },
                     onOpenSession = { id -> navController.navigate(Routes.session(id)) },
-                    onCounter = { navController.navigate(Routes.counterSetup()) },
                     onOpenRoutines = { navController.switchTab(Routes.ROUTINES) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) }
                 )
@@ -167,7 +172,10 @@ private fun FitRoot() {
                     viewModel = viewModel,
                     onEditExercise = { id -> navController.navigate(Routes.exercise(id)) },
                     onNewExercise = { navController.navigate(Routes.EXERCISE_NEW) },
-                    onCountExercise = { id -> navController.navigate(Routes.counterSetup(id)) }
+                    onCountExercise = { id ->
+                        viewModel.prefillCounter(id)
+                        navController.switchTab(Routes.COUNTER)
+                    }
                 )
             }
 
@@ -199,32 +207,14 @@ private fun FitRoot() {
                 )
             }
 
-            composable(
-                route = Routes.COUNTER_SETUP,
-                arguments = listOf(
-                    navArgument(Routes.ARG_EXERCISE_ID) {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    }
-                )
-            ) { entry ->
-                CounterSetupScreen(
-                    viewModel = viewModel,
-                    initialExerciseId = entry.arguments?.getString(Routes.ARG_EXERCISE_ID).orEmpty(),
-                    onStart = {
-                        navController.navigate(Routes.COUNTER) {
-                            popUpTo(Routes.COUNTER_SETUP) { inclusive = true }
-                        }
-                    },
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
+            // 同一個分頁兩種樣子：還沒開始是設定頁，開始之後是計數頁。
+            // 中途切去別的分頁再回來，數到的值還在（狀態在 ViewModel）。
             composable(Routes.COUNTER) {
-                CounterScreen(
-                    viewModel = viewModel,
-                    onClose = { navController.popBackStack() }
-                )
+                if (counting == null) {
+                    CounterSetupScreen(viewModel = viewModel)
+                } else {
+                    CounterScreen(viewModel = viewModel)
+                }
             }
 
             composable(Routes.EXERCISE_NEW) {

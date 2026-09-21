@@ -4,6 +4,7 @@
 
     <!-- 底部分頁 -->
     <string name="tab_today">今天</string>
+    <string name="tab_counter">計數</string>
     <string name="tab_routines">課表</string>
     <string name="tab_library">動作</string>
     <string name="tab_history">紀錄</string>
@@ -35,7 +36,6 @@
     <string name="today_week_count">練了 %1$d 天</string>
     <string name="today_no_routine">按右下角的＋建一張課表</string>
     <string name="today_routines">課表</string>
-    <string name="today_counter">計數</string>
     <string name="today_start">開始</string>
     <string name="today_start_section">開始訓練</string>
     <string name="today_done_section">今天做了什麼</string>
@@ -87,6 +87,7 @@
     <string name="counter_goal_over">目標 %1$d · 超過 %2$d</string>
     <string name="counter_undo">撤銷</string>
     <string name="counter_finish">結束並存檔</string>
+    <string name="counter_saved">已存進紀錄：%1$d 次</string>
     <string name="counter_plus_one">＋ 1</string>
     <string name="counter_plus">+%1$d</string>
     <string name="counter_name_required">給它一個名字</string>

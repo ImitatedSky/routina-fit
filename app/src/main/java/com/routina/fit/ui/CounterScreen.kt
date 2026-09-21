@@ -24,7 +24,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +38,10 @@ import com.routina.fit.R
 import com.routina.fit.ui.theme.bigNumber
 
 /**
- * 計數。做一下按一下，數字往上加。
+ * 計數分頁正在數的樣子。做一下按一下，數字往上加。
+ *
+ * 這個狀態下分頁列會收起來（見 MainActivity 的 Tab 註解）：`＋1` 要連按幾十下，
+ * 下面緊貼分頁列的話手指低一點就切走了。離開只能按 X 或「結束並存檔」。
  *
  * **目標只是參考，不是框架**：本來想做 20 下、做一做做了 40 下，畫面上就該寫 40，
  * 不該還在講「還剩下」。目標留空就完全不顯示進度，純粹累加。
@@ -49,18 +51,11 @@ import com.routina.fit.ui.theme.bigNumber
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CounterScreen(
-    viewModel: FitViewModel,
-    onClose: () -> Unit
-) {
+fun CounterScreen(viewModel: FitViewModel) {
     val state by viewModel.counter.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val current = state
-
-    LaunchedEffect(current == null) {
-        if (current == null) onClose()
-    }
-    if (current == null) return
+    // 存檔或丟棄之後計數狀態就沒了，這一頁會被分頁換回設定頁，不必自己導覽
+    val current = state ?: return
 
     KeepScreenOn(settings.keepScreenOn)
 

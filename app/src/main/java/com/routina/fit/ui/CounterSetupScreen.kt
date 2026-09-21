@@ -9,19 +9,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,38 +38,33 @@ import com.routina.fit.model.Measure
 import kotlinx.coroutines.launch
 
 /**
- * 快速計數的入口。
+ * 計數分頁還沒開始數的樣子。
  *
  * 表單在最上面、進來就能打字，動作庫只是幫忙填——這是 Routina Bite v0.6.0
  * 學到的教訓：使用者的心智模型是「表單是主角」，不是「先選東西再跳對話框」。
  *
  * 清單只列計次的動作。計時的東西（開合跳、棒式）該進課表，
  * 在這裡點它會變成「35 次」，只會讓人困惑。
+ *
+ * 按下「開始計數」不用換頁：ViewModel 一有計數狀態，這個分頁自己就變成 [CounterScreen]。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CounterSetupScreen(
-    viewModel: FitViewModel,
-    initialExerciseId: String,
-    onStart: () -> Unit,
-    onBack: () -> Unit
-) {
+fun CounterSetupScreen(viewModel: FitViewModel) {
     val exercises by viewModel.exercises.collectAsStateWithLifecycle()
     val sessions by viewModel.sessions.collectAsStateWithLifecycle()
+    val prefillId by viewModel.counterPrefill.collectAsStateWithLifecycle()
+    val justSaved by viewModel.counterSaved.collectAsStateWithLifecycle()
 
-    // 從動作庫的「計數」進來時表單已經填好，直接按開始就好
-    val initial = remember(initialExerciseId) {
-        initialExerciseId.takeIf { it.isNotEmpty() }?.let { viewModel.findExercise(it) }
-    }
-
-    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
-    var target by remember { mutableStateOf(initial?.defaultTarget?.toString().orEmpty()) }
-    var pickedId by remember { mutableStateOf(initial?.id.orEmpty()) }
-    var pickedPart by remember { mutableStateOf(initial?.part.orEmpty()) }
+    var name by remember { mutableStateOf("") }
+    var target by remember { mutableStateOf("") }
+    var pickedId by remember { mutableStateOf("") }
+    var pickedPart by remember { mutableStateOf("") }
     var query by remember { mutableStateOf("") }
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
 
     // 目標可以不填：純計數就是做一下按一下，沒有要達成什麼
     val targetValue = target.toIntOrNull() ?: 0
@@ -90,6 +84,24 @@ fun CounterSetupScreen(
         scope.launch { listState.animateScrollToItem(0) }
     }
 
+    // 從動作列的「計數」切過來時把表單填好。分頁沒辦法帶路由參數，所以走狀態
+    LaunchedEffect(prefillId, exercises) {
+        if (prefillId.isEmpty()) return@LaunchedEffect
+        exercises.firstOrNull { it.id == prefillId }?.let { pick(it) }
+        viewModel.clearCounterPrefill()
+    }
+
+    // 剛存完會回到這一頁：捲回表單、講一聲才知道真的存進去了。
+    // 注意順序——clearCounterSaved() 會換掉這個 LaunchedEffect 的 key，
+    // 先清就會把還沒顯示完的 snackbar 一起取消掉。
+    val savedTemplate = stringResource(R.string.counter_saved)
+    LaunchedEffect(justSaved) {
+        val count = justSaved ?: return@LaunchedEffect
+        listState.scrollToItem(0)
+        snackbar.showSnackbar(String.format(savedTemplate, count))
+        viewModel.clearCounterSaved()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -98,14 +110,10 @@ fun CounterSetupScreen(
                         text = stringResource(R.string.counter_title),
                         style = MaterialTheme.typography.titleLarge
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back))
-                    }
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             Column(
                 modifier = Modifier
@@ -121,7 +129,6 @@ fun CounterSetupScreen(
                             exerciseId = pickedId,
                             part = pickedPart
                         )
-                        onStart()
                     },
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -140,7 +147,7 @@ fun CounterSetupScreen(
                 .fillMaxWidth()
                 .padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             item {
                 OutlinedTextField(
@@ -153,7 +160,6 @@ fun CounterSetupScreen(
                     },
                     label = { Text(stringResource(R.string.counter_name)) },
                     singleLine = true,
-                    isError = name.isNotEmpty() && !nameOk,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

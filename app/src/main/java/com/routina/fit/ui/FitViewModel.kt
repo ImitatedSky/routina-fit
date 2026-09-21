@@ -45,6 +45,17 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
     private val _counter = MutableStateFlow<CounterState?>(null)
     val counter: StateFlow<CounterState?> = _counter.asStateFlow()
 
+    /**
+     * 從動作列的「計數」進來時要帶哪個動作。計數是分頁，路由不能帶參數，
+     * 所以預填走狀態；設定頁套用完就清掉。
+     */
+    private val _counterPrefill = MutableStateFlow("")
+    val counterPrefill: StateFlow<String> = _counterPrefill.asStateFlow()
+
+    /** 剛存了幾下。設定頁靠它顯示一次「已存進紀錄」，顯示完就清掉 */
+    private val _counterSaved = MutableStateFlow<Int?>(null)
+    val counterSaved: StateFlow<Int?> = _counterSaved.asStateFlow()
+
     private var ticker: Job? = null
 
     // ---------- 執行課表 ----------
@@ -142,7 +153,19 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ---------- 快速計數 ----------
+    // ---------- 計數 ----------
+
+    fun prefillCounter(exerciseId: String) {
+        _counterPrefill.value = exerciseId
+    }
+
+    fun clearCounterPrefill() {
+        _counterPrefill.value = ""
+    }
+
+    fun clearCounterSaved() {
+        _counterSaved.value = null
+    }
 
     fun startCounter(name: String, target: Int, exerciseId: String = "", part: String = "") {
         _counter.value = CounterState(
@@ -172,6 +195,7 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
     fun saveCounter() {
         val state = _counter.value ?: return
         if (state.done > 0) {
+            _counterSaved.value = state.done
             repository.addSession(
                 Session(
                     id = newId(),

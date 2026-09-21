@@ -44,8 +44,8 @@ import com.routina.fit.model.Routine
 /**
  * 首頁回答兩個問題：這週練了幾天、現在要練哪一張。
  *
- * 快速計數放在最下面一行文字按鈕，不做成大卡片——它是附帶功能，
- * 每天真正會按的是課表。
+ * 計數不在這一頁：它自己是一個分頁（在「動作」右邊）。原本放在這裡的文字連結
+ * 捲動之後就看不到，等於藏起來了。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +53,6 @@ fun TodayScreen(
     viewModel: FitViewModel,
     onStartRoutine: (String) -> Unit,
     onOpenSession: (String) -> Unit,
-    onCounter: () -> Unit,
     onOpenRoutines: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -157,15 +156,6 @@ fun TodayScreen(
                         session = session,
                         onClick = { onOpenSession(session.id) }
                     )
-                }
-            }
-
-            item {
-                TextButton(
-                    onClick = onCounter,
-                    modifier = Modifier.padding(top = 12.dp)
-                ) {
-                    Text(stringResource(R.string.today_counter))
                 }
             }
         }
