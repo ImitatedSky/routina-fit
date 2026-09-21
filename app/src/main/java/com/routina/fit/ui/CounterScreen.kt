@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,14 +37,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.routina.fit.R
 import com.routina.fit.ui.theme.bigNumber
-import com.routina.fit.ui.theme.restColor
-import com.routina.fit.ui.theme.workColor
 
 /**
- * 「我要做 100 個伏地挺身」就是這一頁：一個大數字往下扣。
+ * 計數。做一下按一下，數字往上加。
  *
- * 大 −1 加旁邊的 −5 / −10：100 下沒人一次做完，是 20+20+15 這樣堆的，
- * 所以要同時吃「一下一下點」與「做完一組才記」兩種節奏。
+ * **目標只是參考，不是框架**：本來想做 20 下、做一做做了 40 下，畫面上就該寫 40，
+ * 不該還在講「還剩下」。目標留空就完全不顯示進度，純粹累加。
+ *
+ * `+5` / `+10` 是給「做完一組才記」用的——100 下沒人一次做完，
+ * 是 20+20+15 這樣堆的，所以兩種節奏都要吃。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,25 +66,25 @@ fun CounterScreen(
 
     var confirmQuit by remember { mutableStateOf(false) }
 
-    val accent = if (current.finished) restColor() else workColor()
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(current.name, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            text = stringResource(R.string.counter_target_hint, current.target),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (current.hasTarget) {
+                            Text(
+                                text = stringResource(R.string.counter_target_hint, current.target),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            // 還沒扣過就沒東西可丟，直接走
+                            // 還沒按過就沒東西可丟，直接走
                             if (current.done == 0) viewModel.discardCounter() else confirmQuit = true
                         }
                     ) {
@@ -101,40 +102,19 @@ fun CounterScreen(
             ) {
                 Button(
                     onClick = { viewModel.count(1) },
-                    colors = ButtonDefaults.buttonColors(containerColor = accent),
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(76.dp)
+                        .height(80.dp)
                 ) {
                     Text(
-                        text = if (current.finished) {
-                            stringResource(R.string.counter_continue)
-                        } else {
-                            stringResource(R.string.counter_minus_one)
-                        },
+                        text = stringResource(R.string.counter_plus_one),
                         style = MaterialTheme.typography.headlineSmall
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { viewModel.count(BATCH_SMALL) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.counter_minus, BATCH_SMALL),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { viewModel.count(BATCH_LARGE) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.counter_minus, BATCH_LARGE),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                    BatchButton(BATCH_SMALL) { viewModel.count(BATCH_SMALL) }
+                    BatchButton(BATCH_LARGE) { viewModel.count(BATCH_LARGE) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
@@ -172,37 +152,42 @@ fun CounterScreen(
                     }
                 }
 
+                // 這個數字就是做了幾下，沒有別的意思
                 Text(
-                    text = if (current.finished) current.done.toString() else current.left.toString(),
-                    style = bigNumber(if (current.finished) FINISHED_SP else BIG_SP),
-                    color = if (current.finished) accent else MaterialTheme.colorScheme.onBackground,
+                    text = current.done.toString(),
+                    style = bigNumber(BIG_SP),
+                    color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    modifier = Modifier.padding(vertical = 8.dp)
                 )
                 Text(
-                    text = when {
-                        current.over > 0 -> stringResource(R.string.counter_over, current.over)
-                        current.finished -> stringResource(R.string.counter_done)
-                        else -> stringResource(R.string.counter_left)
-                    },
+                    text = stringResource(R.string.unit_reps),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (current.finished) accent else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                LinearProgressIndicator(
-                    progress = { (current.done.toFloat() / current.target).coerceIn(0f, 1f) },
-                    color = accent,
-                    modifier = Modifier
-                        .padding(top = 24.dp)
-                        .fillMaxWidth()
-                        .height(8.dp)
-                )
-                Text(
-                    text = stringResource(R.string.counter_progress, current.done, current.target),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                if (current.hasTarget) {
+                    LinearProgressIndicator(
+                        progress = { current.progress },
+                        modifier = Modifier
+                            .padding(top = 28.dp)
+                            .fillMaxWidth()
+                            .height(8.dp)
+                    )
+                    Text(
+                        text = when {
+                            current.over > 0 ->
+                                stringResource(R.string.counter_goal_over, current.target, current.over)
+                            current.reachedTarget ->
+                                stringResource(R.string.counter_goal_met, current.target)
+                            else ->
+                                stringResource(R.string.counter_goal_short, current.target, current.remaining)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         }
     }
@@ -218,7 +203,16 @@ fun CounterScreen(
     }
 }
 
+@Composable
+private fun RowScope.BatchButton(n: Int, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) {
+        Text(
+            text = stringResource(R.string.counter_plus, n),
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
 private const val BATCH_SMALL = 5
 private const val BATCH_LARGE = 10
 private const val BIG_SP = 112
-private const val FINISHED_SP = 88

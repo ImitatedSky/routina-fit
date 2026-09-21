@@ -64,7 +64,7 @@ fun CounterSetupScreen(
     }
 
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
-    var target by remember { mutableStateOf(initial?.defaultTarget?.toString() ?: DEFAULT_TARGET) }
+    var target by remember { mutableStateOf(initial?.defaultTarget?.toString().orEmpty()) }
     var pickedId by remember { mutableStateOf(initial?.id.orEmpty()) }
     var pickedPart by remember { mutableStateOf(initial?.part.orEmpty()) }
     var query by remember { mutableStateOf("") }
@@ -72,9 +72,9 @@ fun CounterSetupScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
+    // 目標可以不填：純計數就是做一下按一下，沒有要達成什麼
     val targetValue = target.toIntOrNull() ?: 0
     val nameOk = name.isNotBlank()
-    val targetOk = targetValue > 0
 
     val countable = exercises.filter { it.measure == Measure.REPS }
     val recentIds = remember(sessions) { recentExerciseIds(sessions, RECENT_LIMIT) }
@@ -113,7 +113,7 @@ fun CounterSetupScreen(
                     .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)
             ) {
                 Button(
-                    enabled = nameOk && targetOk,
+                    enabled = nameOk,
                     onClick = {
                         viewModel.startCounter(
                             name = name,
@@ -162,11 +162,10 @@ fun CounterSetupScreen(
                     value = target,
                     onValueChange = { target = it },
                     label = stringResource(R.string.counter_target),
-                    isError = !targetOk,
-                    errorText = stringResource(R.string.counter_target_required),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            item { HintText(stringResource(R.string.counter_target_optional)) }
 
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
@@ -201,5 +200,4 @@ fun CounterSetupScreen(
     }
 }
 
-private const val DEFAULT_TARGET = "100"
 private const val RECENT_LIMIT = 5

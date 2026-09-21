@@ -58,7 +58,12 @@ fun SetLogRow(log: SetLog) {
                 }
             }
             Text(
-                text = stringResource(R.string.log_done_of_target, log.done, log.target, unit),
+                text = if (log.target > 0) {
+                    stringResource(R.string.log_done_of_target, log.done, log.target, unit)
+                } else {
+                    // 沒有目標的計數，顯示「40 次」而不是「40 / 0 次」
+                    stringResource(R.string.log_done_only, log.done, unit)
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (log.completed) {
                     MaterialTheme.colorScheme.onSurfaceVariant

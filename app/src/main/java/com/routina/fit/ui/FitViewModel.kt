@@ -157,8 +157,8 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
     fun count(n: Int) {
         val current = _counter.value ?: return
         val next = current.add(n)
-        // 跨過目標的那一下響一聲，之後繼續加不再響
-        if (next.finished && !current.finished) {
+        // 跨過目標的那一下響一聲，之後繼續加不再響。沒有目標就一直安靜
+        if (next.reachedTarget && !current.reachedTarget) {
             val prefs = settings.value
             cues.done(prefs.sound, prefs.vibrate)
         }

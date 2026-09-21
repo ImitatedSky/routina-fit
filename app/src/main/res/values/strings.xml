@@ -35,7 +35,7 @@
     <string name="today_week_count">練了 %1$d 天</string>
     <string name="today_no_routine">按右下角的＋建一張課表</string>
     <string name="today_routines">課表</string>
-    <string name="today_counter">快速計數</string>
+    <string name="today_counter">計數</string>
     <string name="today_start">開始</string>
     <string name="today_start_section">開始訓練</string>
     <string name="today_done_section">今天做了什麼</string>
@@ -73,25 +73,23 @@
     <string name="run_weight_down">減少重量</string>
     <string name="run_weight_up">增加重量</string>
 
-    <!-- 快速計數 -->
-    <string name="counter_title">快速計數</string>
+    <!-- 計數 -->
+    <string name="counter_title">計數</string>
     <string name="counter_name">動作名稱</string>
-    <string name="counter_target">目標次數</string>
+    <string name="counter_target">目標次數（可留空）</string>
+    <string name="counter_target_optional">不填就是純計數，做幾下算幾下。</string>
     <string name="counter_start">開始計數</string>
     <string name="counter_pick">全部動作</string>
     <string name="counter_recent">最近做過</string>
     <string name="counter_target_hint">目標 %1$d 次</string>
-    <string name="counter_left">還剩下</string>
-    <string name="counter_done">已完成</string>
-    <string name="counter_over">超過目標 +%1$d</string>
-    <string name="counter_progress">已完成 %1$d / %2$d</string>
+    <string name="counter_goal_short">目標 %1$d · 還差 %2$d</string>
+    <string name="counter_goal_met">目標 %1$d · 達成</string>
+    <string name="counter_goal_over">目標 %1$d · 超過 %2$d</string>
     <string name="counter_undo">撤銷</string>
     <string name="counter_finish">結束並存檔</string>
-    <string name="counter_continue">＋ 1 繼續</string>
-    <string name="counter_minus_one">− 1</string>
-    <string name="counter_minus">−%1$d</string>
+    <string name="counter_plus_one">＋ 1</string>
+    <string name="counter_plus">+%1$d</string>
     <string name="counter_name_required">給它一個名字</string>
-    <string name="counter_target_required">目標要大於 0</string>
 
     <!-- 摘要與紀錄 -->
     <string name="summary_title">完成</string>
@@ -106,6 +104,7 @@
     <string name="summary_saved">已存進紀錄</string>
     <string name="summary_started_at">%1$s 開始</string>
     <string name="log_done_of_target">%1$d / %2$d %3$s</string>
+    <string name="log_done_only">%1$d %2$s</string>
 
     <string name="history_title">紀錄</string>
     <string name="history_count">共 %1$d 次</string>
