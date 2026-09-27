@@ -44,7 +44,7 @@
 就是表格裡的值），第 24 個是 `伏地挺身`。**重量一律留空**——原始表格沒有這一欄，值該由使用者
 第一次訓練時自己填。部位與工具的分類是依動作名稱推的，可以改。
 
-內建動作之後才長出來的欄位（例如 0.2.0 的工具）會由 `FitRepository.migrateSeed` 一次性補齊，
+內建動作之後才長出來的欄位（例如工具這一欄）會由 `FitRepository.migrateSeed` 一次性補齊，
 只補使用者沒填過的，不覆蓋任何已有的值。
 
 種子資料在 [`assets/seed_exercises.json`](app/src/main/assets/seed_exercises.json) 與
