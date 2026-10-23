@@ -192,6 +192,11 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
         _counter.value = _counter.value?.undo()
     }
 
+    /** 計數中改目標。給 0 就是取消目標 */
+    fun setCounterTarget(value: Int) {
+        _counter.value = _counter.value?.setTarget(value)
+    }
+
     fun saveCounter() {
         val state = _counter.value ?: return
         if (state.done > 0) {

@@ -9,8 +9,13 @@ import com.routina.fit.model.SetLog
  * **數字是往上加的，目標只是參考**。本來想做 20 下、做一做做了 40 下，那就是 40 下——
  * 不該還在跟你講「還剩下」。[target] 給 0 就是完全沒有目標，純粹做一下按一下。
  *
- * [ops] 是每一次按下去加了多少，撤銷就把最後一筆拿掉——
+ * [ops] 是每一次按下去加了多少（可以是負的），撤銷就把最後一筆拿掉——
  * 比記「上一個數字」好，因為連按幾下 +10 之後也退得回去。
+ *
+ * 撤銷與 −1 是兩回事，兩個都要有：撤銷退的是「上一次操作」（按錯 +10 就整筆退掉），
+ * −1 是「現在少算一下」（按了 +10 才發現只做 8 下）。
+ *
+ * [target] 隨時可以改，不是開始時就定死的——做到一半想加量是常有的事。
  *
  * [exerciseId] 空字串代表名字是當場打的，不在動作庫裡。
  */
@@ -41,6 +46,9 @@ data class CounterState(
 
 fun CounterState.add(n: Int): CounterState =
     copy(done = (done + n).coerceAtLeast(0), ops = ops + n)
+
+/** 改目標。給 0 或負數就是取消目標，變成純計數 */
+fun CounterState.setTarget(value: Int): CounterState = copy(target = value.coerceAtLeast(0))
 
 fun CounterState.undo(): CounterState {
     val last = ops.lastOrNull() ?: return this

@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,11 +47,10 @@ import com.routina.fit.ui.theme.bigNumber
  * 這個狀態下分頁列會收起來（見 MainActivity 的 Tab 註解）：`＋1` 要連按幾十下，
  * 下面緊貼分頁列的話手指低一點就切走了。離開只能按 X 或「結束並存檔」。
  *
- * **目標只是參考，不是框架**：本來想做 20 下、做一做做了 40 下，畫面上就該寫 40，
- * 不該還在講「還剩下」。目標留空就完全不顯示進度，純粹累加。
+ * 同樣的理由，**`−1` 不放在 `＋1` 旁邊**——主鈕旁邊擺反向操作就是等著誤觸。
  *
- * `+5` / `+10` 是給「做完一組才記」用的——100 下沒人一次做完，
- * 是 20+20+15 這樣堆的，所以兩種節奏都要吃。
+ * **目標只是參考，不是框架**：本來想做 20 下、做一做做了 40 下，畫面上就該寫 40，
+ * 不該還在講「還剩下」。目標也**隨時可以改**，做到一半想加量是常有的事。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,22 +63,12 @@ fun CounterScreen(viewModel: FitViewModel) {
     KeepScreenOn(settings.keepScreenOn)
 
     var confirmQuit by remember { mutableStateOf(false) }
+    var editingTarget by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(current.name, style = MaterialTheme.typography.titleMedium)
-                        if (current.hasTarget) {
-                            Text(
-                                text = stringResource(R.string.counter_target_hint, current.target),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
+                title = { Text(current.name, style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(
                         onClick = {
@@ -108,8 +101,16 @@ fun CounterScreen(viewModel: FitViewModel) {
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BatchButton(BATCH_SMALL) { viewModel.count(BATCH_SMALL) }
-                    BatchButton(BATCH_LARGE) { viewModel.count(BATCH_LARGE) }
+                    StepButton(
+                        label = stringResource(R.string.counter_minus_one),
+                        enabled = current.done > 0
+                    ) { viewModel.count(-1) }
+                    StepButton(label = stringResource(R.string.counter_plus, BATCH_SMALL)) {
+                        viewModel.count(BATCH_SMALL)
+                    }
+                    StepButton(label = stringResource(R.string.counter_plus, BATCH_LARGE)) {
+                        viewModel.count(BATCH_LARGE)
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
@@ -169,8 +170,16 @@ fun CounterScreen(viewModel: FitViewModel) {
                             .fillMaxWidth()
                             .height(8.dp)
                     )
+                }
+
+                // 目標是狀態也是入口：文字維持中性，可編輯的訊號交給旁邊的鉛筆
+                TextButton(
+                    onClick = { editingTarget = true },
+                    modifier = Modifier.padding(top = if (current.hasTarget) 4.dp else 24.dp)
+                ) {
                     Text(
                         text = when {
+                            !current.hasTarget -> stringResource(R.string.counter_set_target)
                             current.over > 0 ->
                                 stringResource(R.string.counter_goal_over, current.target, current.over)
                             current.reachedTarget ->
@@ -179,8 +188,18 @@ fun CounterScreen(viewModel: FitViewModel) {
                                 stringResource(R.string.counter_goal_short, current.target, current.remaining)
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
+                        color = if (current.hasTarget) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(16.dp)
                     )
                 }
             }
@@ -196,16 +215,62 @@ fun CounterScreen(viewModel: FitViewModel) {
             onDismiss = { confirmQuit = false }
         )
     }
+
+    if (editingTarget) {
+        TargetDialog(
+            current = current.target,
+            onConfirm = { viewModel.setCounterTarget(it) },
+            onDismiss = { editingTarget = false }
+        )
+    }
 }
 
 @Composable
-private fun RowScope.BatchButton(n: Int, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) {
-        Text(
-            text = stringResource(R.string.counter_plus, n),
-            style = MaterialTheme.typography.titleMedium
-        )
+private fun RowScope.StepButton(label: String, enabled: Boolean = true, onClick: () -> Unit) {
+    OutlinedButton(
+        enabled = enabled,
+        onClick = onClick,
+        modifier = Modifier.weight(1f)
+    ) {
+        Text(text = label, style = MaterialTheme.typography.titleMedium)
     }
+}
+
+/** 計數中改目標。留空就是取消目標，變回純計數 */
+@Composable
+private fun TargetDialog(current: Int, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(if (current > 0) current.toString() else "") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.counter_target_dialog),
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                NumberField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = stringResource(R.string.counter_target_edit),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                HintText(stringResource(R.string.counter_target_edit_hint))
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    onConfirm(text.toIntOrNull() ?: 0)
+                }
+            ) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        }
+    )
 }
 
 private const val BATCH_SMALL = 5

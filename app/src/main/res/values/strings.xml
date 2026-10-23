@@ -89,6 +89,11 @@
     <string name="counter_finish">結束並存檔</string>
     <string name="counter_saved">已存進紀錄：%1$d 次</string>
     <string name="counter_plus_one">＋ 1</string>
+    <string name="counter_minus_one">−1</string>
+    <string name="counter_set_target">設定目標</string>
+    <string name="counter_target_dialog">目標</string>
+    <string name="counter_target_edit">次數</string>
+    <string name="counter_target_edit_hint">留空就是不設目標，做幾下算幾下。</string>
     <string name="counter_plus">+%1$d</string>
     <string name="counter_name_required">給它一個名字</string>
 
