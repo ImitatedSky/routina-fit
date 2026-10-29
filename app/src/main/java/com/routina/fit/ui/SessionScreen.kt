@@ -51,7 +51,12 @@ fun SessionScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(session.routineName, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = session.routineName.ifEmpty {
+                                stringResource(R.string.session_daily)
+                            },
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         Text(
                             text = formatDayLabel(session.date) + " " + formatTime(session.startedAt),
                             style = MaterialTheme.typography.bodySmall,

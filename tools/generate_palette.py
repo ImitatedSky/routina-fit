@@ -71,8 +71,16 @@ def tone_to_okl(t):
 
 TONES = [0, 4, 6, 10, 12, 17, 20, 22, 24, 30, 40, 50, 60, 70, 80, 87, 90, 92, 94, 95, 96, 97, 98, 99, 100]
 
-def ramp(hue, chroma):
-    return {t: oklch_to_hex(tone_to_okl(t), chroma, hue) for t in TONES}
+# 格子圖只要一把等距的梯子（亮色由淺到深、深色反過來），不需要整套 M3 角色，
+# 所以它自己一份色調表，不去撐大其他七條色階。每階差 12 的 L*，相鄰兩階才分得出來。
+#
+# **上限停在 52，不往 40 走**：琥珀到了 L*40 就是土色。GitHub 的最深一階是 L*40 沒問題，
+# 因為深綠讀起來還是綠；深琥珀讀起來是泥巴。亮色的最深一階用 52（飽和的橘），
+# 「做很多」靠彩度講就夠了，不必靠暗。
+HEAT_TONES = [28, 40, 52, 64, 76, 88]
+
+def ramp(hue, chroma, tones=TONES):
+    return {t: oklch_to_hex(tone_to_okl(t), chroma, hue) for t in tones}
 
 # ---------- 家族種子 ----------
 
@@ -81,6 +89,12 @@ L, a, b = rgb_to_oklab(*hex_to_rgb(SEED))
 seed_c = math.hypot(a, b)
 seed_h = math.degrees(math.atan2(b, a)) % 360
 print("seed %s -> Oklch  L=%.4f  C=%.4f  h=%.1f" % (SEED, L, seed_c, seed_h))
+
+# 訓練量用的色相。靛藍＝正在做、綠＝休息、紅＝沒做滿，三個都被佔走了，
+# 所以格子圖挑琥珀：離那三個都遠，讀起來是「累積的熱度」而不是警告，
+# 而且紅綠色盲看琥珀與靛藍仍然是兩個不同的顏色（差的是明度與藍黃軸，不是紅綠軸）。
+HEAT_HUE = 65.0
+HEAT_CHROMA = 0.14
 
 # M3 的彩度比例（CAM16 48/16/24/4/8）換算到 Oklch，以種子彩度為基準
 c_primary = max(seed_c, 0.11)
@@ -94,17 +108,19 @@ ramps = {
     "NV": ramp(seed_h, 0.0120),
     "E": ramp(28.0, 0.16),          # 紅，標準警示色的色相
     "Rest": ramp(145.0, c_primary * 0.8),  # 綠，休息用
+    "Heat": ramp(HEAT_HUE, HEAT_CHROMA, HEAT_TONES),
 }
 
 for name in ("P", "S", "T", "N", "NV", "E", "Rest"):
     row = ramps[name]
     print("\n%-3s " % name + "  ".join("%d:%s" % (t, row[t]) for t in (10, 20, 30, 40, 80, 90, 95, 98)))
+print("\nHeat " + "  ".join("%d:%s" % (t, ramps["Heat"][t]) for t in HEAT_TONES))
 
 # ---------- 產 Kotlin ----------
 
-def obj(name, comment, row):
+def obj(name, comment, row, tones=TONES):
     lines = ["/** %s */" % comment, "internal object %s {" % name]
-    for t in TONES:
+    for t in tones:
         lines.append("    val t%d = Color(0xFF%s)" % (t, row[t].lstrip("#")))
     lines.append("}")
     return "\n".join(lines)
@@ -132,6 +148,12 @@ kt += "\n\n" + obj("N", "中性色：帶一點主色色相的灰，不是純灰"
 kt += "\n\n" + obj("NV", "中性變體：比中性色多一點彩度，用在分隔與次要文字", ramps["NV"])
 kt += "\n\n" + obj("E", "錯誤色。全 App 只有一個意思：這一項沒做滿", ramps["E"])
 kt += "\n\n" + obj("Rest", "休息綠。與主色同一個明度階，讀起來才是對等的兩個狀態", ramps["Rest"])
+kt += "\n\n" + obj(
+    "Heat",
+    "訓練量。格子圖的深淺與那團火共用，等距的五階明度梯",
+    ramps["Heat"],
+    HEAT_TONES
+)
 
 import io
 import os

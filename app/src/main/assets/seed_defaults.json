@@ -1,0 +1,5 @@
+[
+  { "id": "d1", "name": "伏地挺身", "target": 100, "exerciseId": "e24" },
+  { "id": "d2", "name": "深蹲", "target": 100 },
+  { "id": "d3", "name": "核心", "target": 100 }
+]

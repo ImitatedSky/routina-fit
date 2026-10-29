@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     viewModel: FitViewModel,
+    onOpenDefaults: () -> Unit,
     onBack: () -> Unit
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -134,6 +135,17 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            Text(
+                text = stringResource(R.string.settings_today),
+                style = MaterialTheme.typography.titleMedium
+            )
+            OutlinedButton(onClick = onOpenDefaults, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.defaults_title))
+            }
+            HintText(stringResource(R.string.defaults_hint))
+
+            HorizontalDivider()
+
             Text(
                 text = stringResource(R.string.settings_training),
                 style = MaterialTheme.typography.titleMedium

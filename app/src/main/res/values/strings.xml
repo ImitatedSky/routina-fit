@@ -4,7 +4,6 @@
 
     <!-- 底部分頁 -->
     <string name="tab_today">今天</string>
-    <string name="tab_counter">計數</string>
     <string name="tab_routines">課表</string>
     <string name="tab_library">動作</string>
     <string name="tab_history">紀錄</string>
@@ -22,6 +21,7 @@
     <string name="action_import">匯入備份</string>
     <string name="action_move_up">上移</string>
     <string name="action_move_down">下移</string>
+    <string name="action_add_to_today">加到今天</string>
 
     <!-- 單位 -->
     <string name="unit_reps">次</string>
@@ -32,16 +32,43 @@
 
     <!-- 今天 -->
     <string name="today_title">今天</string>
-    <string name="today_week">本週</string>
-    <string name="today_week_count">練了 %1$d 天</string>
-    <string name="today_no_routine">按右下角的＋建一張課表</string>
-    <string name="today_routines">課表</string>
-    <string name="today_start">開始</string>
-    <string name="today_start_section">開始訓練</string>
-    <string name="today_done_section">今天做了什麼</string>
-    <string name="today_nothing_yet">今天還沒練。挑一張課表開始。</string>
-    <string name="today_no_routine_tab">還沒有課表。到「課表」分頁建一張。</string>
+    <string name="today_list">今天要做的</string>
+    <string name="today_total">今天 %1$d 次</string>
+    <string name="today_list_empty">清單是空的。按下面的＋加一項，或到設定裡排好每天的預設清單。</string>
+    <string name="today_add_item">加一項</string>
+    <string name="today_add_confirm">加入今天</string>
+    <string name="today_edit_item">編輯</string>
+    <string name="today_delete_item">刪掉這一項？</string>
+    <string name="today_delete_item_message">已經數的 %1$d 次會跟著消失。</string>
+    <string name="today_settle">結算</string>
+    <string name="today_settle_again">再結算</string>
+    <string name="today_settled">已記下來：%1$d 次</string>
     <string name="today_session_summary">%1$d 分 · %2$d 次</string>
+    <string name="session_daily">每日清單</string>
+
+    <!-- 連續天數與格子圖 -->
+    <string name="streak_days">連續 %1$d 天</string>
+    <string name="streak_none">還沒開始連</string>
+    <string name="streak_hint">一天一格，做得越多顏色越深</string>
+
+    <!-- 清單項目 -->
+    <string name="item_name">名稱</string>
+    <string name="item_target">目標次數（可留空）</string>
+    <string name="item_target_hint">不填就是純計數，做幾下算幾下。</string>
+    <string name="item_recent">最近做過</string>
+    <string name="item_pick">全部動作</string>
+    <string name="item_no_target">不設目標</string>
+
+    <!-- 每天的預設清單 -->
+    <string name="defaults_title">每天的預設清單</string>
+    <string name="defaults_hint">每天換日時，「今天」會照這一份重新長出來。改這裡不會動到今天已經數的次數。</string>
+    <string name="defaults_empty">還沒有預設項目，按右下角的＋新增。</string>
+    <string name="defaults_add">新增項目</string>
+    <string name="defaults_from_today">用今天這份當預設</string>
+    <string name="defaults_copied">已存成預設清單</string>
+
+    <!-- 課表 -->
+    <string name="today_start">開始</string>
     <string name="routine_meta">%1$d 個動作 · 約 %2$d 分</string>
     <string name="routine_empty_meta">還沒有動作</string>
     <string name="routine_new">新增課表</string>
@@ -73,30 +100,6 @@
     <string name="run_weight_down">減少重量</string>
     <string name="run_weight_up">增加重量</string>
 
-    <!-- 計數 -->
-    <string name="counter_title">計數</string>
-    <string name="counter_name">動作名稱</string>
-    <string name="counter_target">目標次數（可留空）</string>
-    <string name="counter_target_optional">不填就是純計數，做幾下算幾下。</string>
-    <string name="counter_start">開始計數</string>
-    <string name="counter_pick">全部動作</string>
-    <string name="counter_recent">最近做過</string>
-    <string name="counter_target_hint">目標 %1$d 次</string>
-    <string name="counter_goal_short">目標 %1$d · 還差 %2$d</string>
-    <string name="counter_goal_met">目標 %1$d · 達成</string>
-    <string name="counter_goal_over">目標 %1$d · 超過 %2$d</string>
-    <string name="counter_undo">撤銷</string>
-    <string name="counter_finish">結束並存檔</string>
-    <string name="counter_saved">已存進紀錄：%1$d 次</string>
-    <string name="counter_plus_one">＋ 1</string>
-    <string name="counter_minus_one">−1</string>
-    <string name="counter_set_target">設定目標</string>
-    <string name="counter_target_dialog">目標</string>
-    <string name="counter_target_edit">次數</string>
-    <string name="counter_target_edit_hint">留空就是不設目標，做幾下算幾下。</string>
-    <string name="counter_plus">+%1$d</string>
-    <string name="counter_name_required">給它一個名字</string>
-
     <!-- 摘要與紀錄 -->
     <string name="summary_title">完成</string>
     <string name="summary_save">存進紀錄</string>
@@ -115,7 +118,6 @@
     <string name="history_title">紀錄</string>
     <string name="history_count">共 %1$d 次</string>
     <string name="history_empty">還沒有任何紀錄。做完第一次訓練就會出現在這裡。</string>
-    <string name="history_counter_tag">計數</string>
     <string name="history_minutes">%1$d 分</string>
     <string name="history_delete_title">刪除這筆紀錄？</string>
     <string name="session_title">訓練紀錄</string>
@@ -130,7 +132,6 @@
     <string name="library_filter_all">全部</string>
     <string name="library_filter_bodyweight">徒手</string>
     <string name="library_count_filtered">%1$d / %2$d 個動作</string>
-    <string name="action_count_this">計數</string>
     <string name="exercise_new">新增動作</string>
     <string name="exercise_edit_title">編輯動作</string>
     <string name="exercise_name">名稱</string>
@@ -167,6 +168,7 @@
 
     <!-- 設定 -->
     <string name="settings_title">設定</string>
+    <string name="settings_today">今天</string>
     <string name="settings_training">訓練</string>
     <string name="settings_default_rest">預設組間休息（秒）</string>
     <string name="settings_sound">倒數提示音</string>
@@ -184,7 +186,4 @@
     <string name="import_failed_unreadable">這個檔案讀不出來</string>
     <string name="import_failed_not_fit">這不是 Routina Fit 的備份檔</string>
     <string name="import_failed_newer">備份檔版本比這個 App 新，請先更新 App</string>
-
-    <!-- 星期，本週那排格子用 -->
-    <string name="weekday_today">今</string>
 </resources>

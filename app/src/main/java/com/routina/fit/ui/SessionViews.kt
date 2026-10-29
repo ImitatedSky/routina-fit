@@ -75,14 +75,15 @@ fun SetLogRow(log: SetLog) {
     }
 }
 
-/** 一次訓練一列。首頁的「今天做了什麼」與紀錄分頁共用；[menu] 空的就不顯示 ⋯ */
+/** 一次訓練一列。紀錄分頁與紀錄詳情共用；[menu] 空的就不顯示 ⋯ */
 @Composable
 fun SessionRow(
     session: Session,
     onClick: () -> Unit,
     menu: List<Pair<String, () -> Unit>> = emptyList()
 ) {
-    val counterTag = stringResource(R.string.history_counter_tag)
+    // 每日清單那筆紀錄沒有課表名字，名字由這一層補——資料層不碰字串資源
+    val name = session.routineName.ifEmpty { stringResource(R.string.session_daily) }
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
@@ -101,15 +102,14 @@ fun SessionRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = session.routineName, style = MaterialTheme.typography.bodyLarge)
+                Text(text = name, style = MaterialTheme.typography.bodyLarge)
                 Text(
                     text = formatTime(session.startedAt) + "　·　" +
                         stringResource(
                             R.string.today_session_summary,
                             session.durationSeconds / 60,
                             session.totalReps
-                        ) +
-                        if (session.isCounter) "　·　$counterTag" else "",
+                        ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,14 +1,20 @@
 package com.routina.fit.data
 
 import android.content.Context
+import com.routina.fit.model.DayItem
+import com.routina.fit.model.DayPlan
 import com.routina.fit.model.Exercise
 import com.routina.fit.model.FitBackup
 import com.routina.fit.model.FitSettings
+import com.routina.fit.model.Measure
 import com.routina.fit.model.Routine
 import com.routina.fit.model.Session
+import com.routina.fit.model.SetLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,9 +25,10 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.UUID
 
 /**
- * Fit 的本地儲存：filesDir 底下三個 JSON 檔，加上放在 SharedPreferences 的偏好設定。
+ * Fit 的本地儲存：filesDir 底下幾個 JSON 檔，加上放在 SharedPreferences 的偏好設定。
  *
  * 作法與 Routina Bite 一致：
  * - 資料量小，整份載進記憶體、整份寫回，不用資料庫
@@ -45,6 +52,8 @@ class FitRepository(context: Context) {
     private val exercisesFile: File get() = File(appContext.filesDir, FILE_EXERCISES)
     private val routinesFile: File get() = File(appContext.filesDir, FILE_ROUTINES)
     private val sessionsFile: File get() = File(appContext.filesDir, FILE_SESSIONS)
+    private val defaultsFile: File get() = File(appContext.filesDir, FILE_DEFAULTS)
+    private val dayFile: File get() = File(appContext.filesDir, FILE_DAY)
 
     private val _exercises = MutableStateFlow<List<Exercise>>(emptyList())
     val exercises: StateFlow<List<Exercise>> = _exercises.asStateFlow()
@@ -61,6 +70,15 @@ class FitRepository(context: Context) {
     private val _expandedParts = MutableStateFlow<Set<String>>(emptySet())
     val expandedParts: StateFlow<Set<String>> = _expandedParts.asStateFlow()
 
+    /** 每天的預設清單。換日時用它長出新的一天 */
+    private val _defaults = MutableStateFlow<List<DayItem>>(emptyList())
+    val defaults: StateFlow<List<DayItem>> = _defaults.asStateFlow()
+
+    private val _today = MutableStateFlow(DayPlan(date = todayDate()))
+    val today: StateFlow<DayPlan> = _today.asStateFlow()
+
+    private var todayWrite: Job? = null
+
     init {
         // 檔案只有幾十 KB，啟動時同步載入，讓第一幀就有正確資料
         val seededExercises = loadSeeded(exercisesFile, ASSET_EXERCISES, Exercise.serializer()) {
@@ -69,6 +87,9 @@ class FitRepository(context: Context) {
         val seededRoutines = loadSeeded(routinesFile, ASSET_ROUTINES, Routine.serializer()) {
             _routines.value = it
         }
+        val seededDefaults = loadSeeded(defaultsFile, ASSET_DEFAULTS, DayItem.serializer()) {
+            _defaults.value = it
+        }
         _sessions.value = readList(sessionsFile, ListSerializer(Session.serializer()))
         _settings.value = readSettings()
         _expandedParts.value = readExpandedParts()
@@ -76,6 +97,12 @@ class FitRepository(context: Context) {
         // 種子資料要立刻落地，不然「使用者自己刪光」與「還沒載過」下次啟動就分不出來
         if (seededExercises && _exercises.value.isNotEmpty()) persistExercises()
         if (seededRoutines && _routines.value.isNotEmpty()) persistRoutines()
+        if (seededDefaults && _defaults.value.isNotEmpty()) persistDefaults()
+
+        val storedDay = readDay()
+        _today.value = storedDay ?: freshDay()
+        if (storedDay == null) persistToday()
+        ensureToday()
 
         migrateSeed(freshInstall = seededExercises)
     }
@@ -165,6 +192,114 @@ class FitRepository(context: Context) {
             ?.toSet()
             ?: emptySet()
 
+    private fun readDay(): DayPlan? = try {
+        if (dayFile.exists()) json.decodeFromString(DayPlan.serializer(), dayFile.readText()) else null
+    } catch (t: Throwable) {
+        null
+    }
+
+    // ---------- 今天的清單 ----------
+
+    /**
+     * 確認手上這份清單就是今天的，跨過午夜就換一份新的。
+     *
+     * 畫面每次回到前景都會叫一次——App 開著過午夜是常態，不能只在啟動時算一次。
+     *
+     * 昨天有做卻沒結算的，在這裡自動收進紀錄：數出來的次數不該因為換日就消失。
+     * 所以「結算」按鈕的作用是**現在就記下來**，不是「不按就不算」。
+     */
+    fun ensureToday() {
+        val date = todayDate()
+        val current = _today.value
+        if (current.date == date) return
+        if (current.touched && !current.settled) recordDay(current, System.currentTimeMillis())
+        _today.value = freshDay(date)
+        persistToday()
+    }
+
+    /** 用預設清單長出新的一天。id 重給，免得不同天的項目共用 key */
+    private fun freshDay(date: String = todayDate()): DayPlan =
+        DayPlan(date = date, items = _defaults.value.map { it.copy(id = newId(), done = 0) })
+
+    /** 加或扣一下。回傳改完的那一項，呼叫端用它判斷要不要響 */
+    fun countItem(id: String, delta: Int): DayItem? {
+        val plan = _today.value
+        val index = plan.items.indexOfFirst { it.id == id }
+        if (index < 0) return null
+        val item = plan.items[index]
+        val next = item.copy(done = (item.done + delta).coerceAtLeast(0))
+        if (next.done == item.done) return item
+        _today.value = plan.copy(
+            items = plan.items.toMutableList().apply { this[index] = next },
+            startedAt = if (plan.startedAt == 0L) System.currentTimeMillis() else plan.startedAt
+        )
+        persistToday()
+        return next
+    }
+
+    fun addTodayItem(name: String, target: Int, exerciseId: String = "") {
+        val item = DayItem(id = newId(), name = name.trim(), target = target, exerciseId = exerciseId)
+        _today.value = _today.value.let { it.copy(items = it.items + item) }
+        persistToday()
+    }
+
+    fun updateTodayItem(item: DayItem) {
+        val plan = _today.value
+        val index = plan.items.indexOfFirst { it.id == item.id }
+        if (index < 0) return
+        _today.value = plan.copy(items = plan.items.toMutableList().apply { this[index] = item })
+        persistToday()
+    }
+
+    fun deleteTodayItem(id: String) {
+        _today.value = _today.value.let { plan -> plan.copy(items = plan.items.filterNot { it.id == id }) }
+        persistToday()
+    }
+
+    /** 結算：把今天寫成一筆紀錄。回傳記下來的總次數，0 表示今天還沒動過 */
+    fun settleToday(): Int {
+        val plan = _today.value
+        if (!plan.touched) return 0
+        val now = System.currentTimeMillis()
+        recordDay(plan, now)
+        _today.value = plan.copy(settledAt = now)
+        persistToday()
+        return plan.total
+    }
+
+    /**
+     * 把一天寫成紀錄。id 由日期決定，所以結算兩次是更新同一筆，不是長出第二筆。
+     * [Session.routineName] 留空，顯示的名字由畫面那層補——這一層不該碰字串資源。
+     */
+    private fun recordDay(plan: DayPlan, endedAt: Long) {
+        val logs = plan.items.filter { it.done > 0 }.map { item ->
+            SetLog(
+                exerciseId = item.exerciseId,
+                name = item.name,
+                measure = Measure.REPS,
+                target = item.target,
+                done = item.done
+            )
+        }
+        if (logs.isEmpty()) return
+        upsertSession(
+            Session(
+                id = DAY_SESSION_PREFIX + plan.date,
+                date = plan.date,
+                startedAt = if (plan.startedAt > 0L) plan.startedAt else endedAt,
+                endedAt = endedAt,
+                logs = logs
+            )
+        )
+    }
+
+    // ---------- 預設清單 ----------
+
+    fun setDefaults(items: List<DayItem>) {
+        _defaults.value = items
+        persistDefaults()
+    }
+
     // ---------- 動作庫 ----------
 
     fun findExercise(id: String): Exercise? = _exercises.value.firstOrNull { it.id == id }
@@ -229,8 +364,15 @@ class FitRepository(context: Context) {
 
     fun findSession(id: String): Session? = _sessions.value.firstOrNull { it.id == id }
 
-    fun addSession(session: Session) {
-        _sessions.value = _sessions.value + session
+    /** 同 id 就取代。每日清單的 id 由日期決定，結算兩次才不會長出兩筆 */
+    fun upsertSession(session: Session) {
+        val current = _sessions.value
+        val index = current.indexOfFirst { it.id == session.id }
+        _sessions.value = if (index >= 0) {
+            current.toMutableList().apply { this[index] = session }
+        } else {
+            current + session
+        }
         persistSessions()
     }
 
@@ -258,12 +400,19 @@ class FitRepository(context: Context) {
         exercises = _exercises.value,
         routines = _routines.value,
         sessions = _sessions.value,
-        settings = _settings.value
+        settings = _settings.value,
+        defaults = _defaults.value,
+        today = _today.value
     )
 
     /**
      * 依 id 合併匯入的備份：同 id 以匯入的為準，現有但檔案裡沒有的一律保留，
      * 所以重複匯入同一份不會長出重複資料。
+     *
+     * 兩個例外：
+     * - **預設清單整份換掉**。它是一張有順序的樣板，依 id 合併會把使用者刪掉的項目又帶回來。
+     * - **今天那份只在日期對得上時才收**。昨天的清單蓋到今天是錯的；那一天如果結算過，
+     *   內容本來就在 `sessions` 裡。
      */
     fun applyBackup(backup: FitBackup) {
         _exercises.value = mergeBy(_exercises.value, backup.exercises) { it.id }
@@ -273,6 +422,12 @@ class FitRepository(context: Context) {
         persistExercises()
         persistRoutines()
         persistSessions()
+
+        if (backup.defaults.isNotEmpty()) setDefaults(backup.defaults)
+        backup.today?.takeIf { it.date == todayDate() }?.let {
+            _today.value = it
+            persistToday()
+        }
     }
 
     private fun <T> mergeBy(current: List<T>, incoming: List<T>, key: (T) -> String): List<T> {
@@ -313,6 +468,33 @@ class FitRepository(context: Context) {
         }
     }
 
+    private fun persistDefaults() {
+        scope.launch {
+            writeMutex.withLock {
+                val content = json.encodeToString(ListSerializer(DayItem.serializer()), _defaults.value)
+                writeAtomically(defaultsFile, content)
+            }
+        }
+    }
+
+    /**
+     * 今天這份要省著寫：長按連加一秒會按十幾下，每一下都寫檔太吵。
+     * 已經有一次排隊中就不再排——它跑的時候讀到的是當下最新的狀態，
+     * 所以中間這幾下不會漏，只是合併成一次寫入。
+     */
+    private fun persistToday() {
+        if (todayWrite?.isActive == true) return
+        todayWrite = scope.launch {
+            delay(TODAY_WRITE_DELAY_MS)
+            writeMutex.withLock {
+                val content = json.encodeToString(DayPlan.serializer(), _today.value)
+                writeAtomically(dayFile, content)
+            }
+        }
+    }
+
+    private fun newId(): String = UUID.randomUUID().toString()
+
     /** 呼叫端必須已持有 writeMutex */
     private fun writeAtomically(target: File, content: String) {
         try {
@@ -331,8 +513,17 @@ class FitRepository(context: Context) {
         const val FILE_EXERCISES = "exercises.json"
         const val FILE_ROUTINES = "routines.json"
         const val FILE_SESSIONS = "sessions.json"
+        const val FILE_DEFAULTS = "defaults.json"
+        const val FILE_DAY = "day.json"
         const val ASSET_EXERCISES = "seed_exercises.json"
         const val ASSET_ROUTINES = "seed_routines.json"
+        const val ASSET_DEFAULTS = "seed_defaults.json"
+
+        /** 每日清單那筆紀錄的 id 前綴，後面接日期 */
+        const val DAY_SESSION_PREFIX = "day-"
+
+        /** 連按時合併寫檔的間隔 */
+        const val TODAY_WRITE_DELAY_MS = 400L
 
         /** 種子欄位的版本。內建資料多了新欄位時 +1，見 migrateSeed */
         const val SEED_VERSION = 2

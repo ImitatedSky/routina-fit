@@ -16,5 +16,8 @@ data class FitBackup(
     val exercises: List<Exercise> = emptyList(),
     val routines: List<Routine> = emptyList(),
     val sessions: List<Session> = emptyList(),
-    val settings: FitSettings? = null
+    val settings: FitSettings? = null,
+    val defaults: List<DayItem> = emptyList(),
+    /** 今天那份還沒結算的清單。換手機是在半路發生的，數到一半的次數也要帶過去 */
+    val today: DayPlan? = null
 )

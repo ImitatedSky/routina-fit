@@ -21,8 +21,10 @@ data class SetLog(
 }
 
 /**
- * 一次訓練。課表模式與快速計數共用這個結構，差別只在 [routineId]：
- * null 就是沒有課表的計數，清單裡只有一筆 [SetLog]。
+ * 一次訓練。課表與每日清單共用這個結構，差別只在 [routineId]：null 就是每日清單那一筆。
+ *
+ * 每日清單的 [routineName] 一律是空的，顯示的名字由畫面那層補；
+ * 它的 id 由日期決定（`day-yyyy-MM-dd`），所以同一天結算幾次都是更新同一筆。
  *
  * [date] 是本地日期的 yyyy-MM-dd，用來分組與排序；[startedAt] / [endedAt] 才是精確時刻。
  *
@@ -39,8 +41,6 @@ data class Session(
     val logs: List<SetLog> = emptyList(),
     val note: String = ""
 ) {
-    val isCounter: Boolean get() = routineId == null
-
     val totalReps: Int get() = logs.filter { it.measure == Measure.REPS }.sumOf { it.done }
 
     val totalSeconds: Int get() = logs.filter { it.measure == Measure.SECONDS }.sumOf { it.done }

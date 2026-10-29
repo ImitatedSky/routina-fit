@@ -215,3 +215,13 @@ internal object Rest {
     val t99 = Color(0xFFF7FFF6)
     val t100 = Color(0xFFFFFFFF)
 }
+
+/** 訓練量。格子圖的深淺與那團火共用，等距的五階明度梯 */
+internal object Heat {
+    val t28 = Color(0xFF603700)
+    val t40 = Color(0xFF874F00)
+    val t52 = Color(0xFFB06900)
+    val t64 = Color(0xFFD68729)
+    val t76 = Color(0xFFF9A750)
+    val t88 = Color(0xFFFFD4AB)
+}

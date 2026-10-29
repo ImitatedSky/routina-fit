@@ -1,11 +1,9 @@
 package com.routina.fit.data
 
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAdjusters
 
 /**
  * 日期一律用本地日期的 yyyy-MM-dd 字串。這個格式可以直接比大小與排序，
@@ -27,9 +25,3 @@ fun dateOf(epochMillis: Long): String =
 
 /** 匯出檔名用的 yyyyMMdd */
 fun compactToday(): String = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-
-/** 本週的七天，週一到週日。今日頁那排格子用 */
-fun thisWeek(): List<String> {
-    val monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    return (0L..6L).map { monday.plusDays(it).format(ISO) }
-}

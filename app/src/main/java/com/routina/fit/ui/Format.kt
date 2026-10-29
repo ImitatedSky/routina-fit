@@ -50,7 +50,3 @@ fun formatDayLabel(date: String): String {
 fun formatTime(epochMillis: Long): String =
     LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(epochMillis), ZoneId.systemDefault())
         .format(timeLabel)
-
-/** 這一天是星期幾的單字，今日頁那排格子用 */
-fun weekdayLetter(date: String): String =
-    parseDate(date).dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.TAIWAN)

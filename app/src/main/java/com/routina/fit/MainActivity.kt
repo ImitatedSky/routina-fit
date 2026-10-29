@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PlusOne
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -34,8 +32,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.routina.fit.ui.CounterScreen
-import com.routina.fit.ui.CounterSetupScreen
+import com.routina.fit.ui.AddItemScreen
+import com.routina.fit.ui.DefaultsScreen
 import com.routina.fit.ui.ExerciseEditScreen
 import com.routina.fit.ui.FitViewModel
 import com.routina.fit.ui.HistoryScreen
@@ -69,16 +67,15 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * 底部分頁。執行、摘要、編輯這些是任務不是地方，一律全螢幕蓋上去。
+ * 底部分頁只放「地方」。執行、摘要、編輯、加一項這些是任務，一律全螢幕蓋上去、不顯示分頁列。
  *
- * 計數是個中間狀態：設定要數什麼是「地方」，所以給它一個分頁；真的在數的時候是「任務」，
- * 分頁列會收起來——`＋1` 要連按幾十下，下面緊貼分頁列的話手指低一點就切走了。
+ * 計數沒有自己的分頁——它就是首頁。原本那個「計數」分頁是先選動作再開始數，
+ * 等於每天都要重新設定一次同一件事；現在今天要做什麼本來就列在首頁上，點一下就是一下。
  */
 private enum class Tab(val route: String, val label: Int, val icon: ImageVector) {
     TODAY(Routes.TODAY, R.string.tab_today, Icons.Default.Today),
     ROUTINES(Routes.ROUTINES, R.string.tab_routines, Icons.AutoMirrored.Filled.ListAlt),
     LIBRARY(Routes.LIBRARY, R.string.tab_library, Icons.Default.FitnessCenter),
-    COUNTER(Routes.COUNTER, R.string.tab_counter, Icons.Default.PlusOne),
     HISTORY(Routes.HISTORY, R.string.tab_history, Icons.Default.History)
 }
 
@@ -90,9 +87,12 @@ private object Routes {
 
     const val RUN = "run"
     const val SUMMARY = "summary"
-    const val COUNTER = "counter"
     const val SETTINGS = "settings"
+    const val DEFAULTS = "defaults"
     const val EXERCISE_NEW = "exercise/new"
+
+    // 加一項可以帶一個動作進來（從動作庫的「加到今天」），也可以空手進來自己打
+    const val ITEM_NEW = "item/new?exerciseId={exerciseId}"
 
     const val EXERCISE_EDIT = "exercise/{exerciseId}"
     const val ROUTINE_EDIT = "routine/{routineId}"
@@ -101,6 +101,9 @@ private object Routes {
     const val ARG_EXERCISE_ID = "exerciseId"
     const val ARG_ROUTINE_ID = "routineId"
     const val ARG_SESSION_ID = "sessionId"
+
+    fun newItem(exerciseId: String = "") =
+        if (exerciseId.isEmpty()) "item/new" else "item/new?exerciseId=$exerciseId"
 
     fun exercise(id: String) = "exercise/$id"
     fun routine(id: String) = "routine/$id"
@@ -115,15 +118,11 @@ private fun FitRoot() {
     // 分頁全是頂層路由，直接比 route 就夠，不需要走 hierarchy
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-
-    // 正在數的時候把分頁列收起來，避免連按 ＋1 時誤觸切走
-    val counting by viewModel.counter.collectAsStateWithLifecycle()
-    val onTab = Tab.entries.any { it.route == currentRoute } &&
-        !(currentRoute == Routes.COUNTER && counting != null)
+    val onTab = Tab.entries.any { it.route == currentRoute }
 
     Scaffold(
         bottomBar = {
-            // 執行、計數、編輯這些全螢幕的畫面不顯示分頁列——它們是任務，不是地方
+            // 全螢幕的畫面不顯示分頁列——它們是任務，不是地方
             if (onTab) {
                 NavigationBar {
                     Tab.entries.forEach { tab ->
@@ -148,11 +147,7 @@ private fun FitRoot() {
             composable(Routes.TODAY) {
                 TodayScreen(
                     viewModel = viewModel,
-                    onStartRoutine = { routineId ->
-                        if (viewModel.startRoutine(routineId)) navController.navigate(Routes.RUN)
-                    },
-                    onOpenSession = { id -> navController.navigate(Routes.session(id)) },
-                    onOpenRoutines = { navController.switchTab(Routes.ROUTINES) },
+                    onAddItem = { navController.navigate(Routes.newItem()) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) }
                 )
             }
@@ -172,10 +167,7 @@ private fun FitRoot() {
                     viewModel = viewModel,
                     onEditExercise = { id -> navController.navigate(Routes.exercise(id)) },
                     onNewExercise = { navController.navigate(Routes.EXERCISE_NEW) },
-                    onCountExercise = { id ->
-                        viewModel.prefillCounter(id)
-                        navController.switchTab(Routes.COUNTER)
-                    }
+                    onAddToToday = { id -> navController.navigate(Routes.newItem(id)) }
                 )
             }
 
@@ -207,14 +199,21 @@ private fun FitRoot() {
                 )
             }
 
-            // 同一個分頁兩種樣子：還沒開始是設定頁，開始之後是計數頁。
-            // 中途切去別的分頁再回來，數到的值還在（狀態在 ViewModel）。
-            composable(Routes.COUNTER) {
-                if (counting == null) {
-                    CounterSetupScreen(viewModel = viewModel)
-                } else {
-                    CounterScreen(viewModel = viewModel)
-                }
+            composable(
+                route = Routes.ITEM_NEW,
+                arguments = listOf(
+                    navArgument(Routes.ARG_EXERCISE_ID) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { entry ->
+                AddItemScreen(
+                    viewModel = viewModel,
+                    exerciseId = entry.arguments?.getString(Routes.ARG_EXERCISE_ID),
+                    onDone = { navController.popBackStack() }
+                )
             }
 
             composable(Routes.EXERCISE_NEW) {
@@ -267,6 +266,14 @@ private fun FitRoot() {
 
             composable(Routes.SETTINGS) {
                 SettingsScreen(
+                    viewModel = viewModel,
+                    onOpenDefaults = { navController.navigate(Routes.DEFAULTS) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.DEFAULTS) {
+                DefaultsScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )

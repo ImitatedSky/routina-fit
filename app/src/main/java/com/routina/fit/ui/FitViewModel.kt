@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.routina.fit.FitApp
 import com.routina.fit.data.BackupCodec
 import com.routina.fit.data.dateOf
+import com.routina.fit.model.DayItem
+import com.routina.fit.model.DayPlan
 import com.routina.fit.model.Exercise
 import com.routina.fit.model.FitSettings
 import com.routina.fit.model.Routine
@@ -38,23 +40,15 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
     val sessions: StateFlow<List<Session>> = repository.sessions
     val settings: StateFlow<FitSettings> = repository.settings
     val expandedParts: StateFlow<Set<String>> = repository.expandedParts
+    val today: StateFlow<DayPlan> = repository.today
+    val defaults: StateFlow<List<DayItem>> = repository.defaults
 
     private val _run = MutableStateFlow<RunState?>(null)
     val run: StateFlow<RunState?> = _run.asStateFlow()
 
-    private val _counter = MutableStateFlow<CounterState?>(null)
-    val counter: StateFlow<CounterState?> = _counter.asStateFlow()
-
-    /**
-     * 從動作列的「計數」進來時要帶哪個動作。計數是分頁，路由不能帶參數，
-     * 所以預填走狀態；設定頁套用完就清掉。
-     */
-    private val _counterPrefill = MutableStateFlow("")
-    val counterPrefill: StateFlow<String> = _counterPrefill.asStateFlow()
-
-    /** 剛存了幾下。設定頁靠它顯示一次「已存進紀錄」，顯示完就清掉 */
-    private val _counterSaved = MutableStateFlow<Int?>(null)
-    val counterSaved: StateFlow<Int?> = _counterSaved.asStateFlow()
+    /** 剛結算了幾下。首頁靠它講一次「已記下來」，講完就清掉 */
+    private val _settled = MutableStateFlow<Int?>(null)
+    val settled: StateFlow<Int?> = _settled.asStateFlow()
 
     private var ticker: Job? = null
 
@@ -91,7 +85,7 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
     fun saveRun() {
         val state = _run.value ?: return
         if (state.logs.isNotEmpty()) {
-            repository.addSession(
+            repository.upsertSession(
                 Session(
                     id = newId(),
                     date = dateOf(state.startedAt),
@@ -153,72 +147,45 @@ class FitViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ---------- 計數 ----------
+    // ---------- 今天的清單 ----------
 
-    fun prefillCounter(exerciseId: String) {
-        _counterPrefill.value = exerciseId
-    }
+    /** 回到前景時叫一次。App 開著過午夜，手上那份就不是今天的了 */
+    fun ensureToday() = repository.ensureToday()
 
-    fun clearCounterPrefill() {
-        _counterPrefill.value = ""
-    }
-
-    fun clearCounterSaved() {
-        _counterSaved.value = null
-    }
-
-    fun startCounter(name: String, target: Int, exerciseId: String = "", part: String = "") {
-        _counter.value = CounterState(
-            exerciseId = exerciseId,
-            name = name.trim(),
-            part = part,
-            target = target,
-            startedAt = System.currentTimeMillis()
-        )
-    }
-
-    fun count(n: Int) {
-        val current = _counter.value ?: return
-        val next = current.add(n)
-        // 跨過目標的那一下響一聲，之後繼續加不再響。沒有目標就一直安靜
-        if (next.reachedTarget && !current.reachedTarget) {
+    /** 按一下就加一下。[delta] 給負數就是扣回去 */
+    fun count(itemId: String, delta: Int) {
+        val before = today.value.items.firstOrNull { it.id == itemId }
+        val after = repository.countItem(itemId, delta) ?: return
+        // 跨過目標的那一下響一聲，之後繼續加不再響
+        if (after.reached && before?.reached == false) {
             val prefs = settings.value
             cues.done(prefs.sound, prefs.vibrate)
         }
-        _counter.value = next
     }
 
-    fun undoCount() {
-        _counter.value = _counter.value?.undo()
+    fun addTodayItem(name: String, target: Int, exerciseId: String = "") =
+        repository.addTodayItem(name, target, exerciseId)
+
+    fun updateTodayItem(item: DayItem) = repository.updateTodayItem(item)
+
+    fun deleteTodayItem(id: String) = repository.deleteTodayItem(id)
+
+    /** 結算：把今天寫成一筆紀錄。沒動過就不記，也不報告 */
+    fun settleToday() {
+        _settled.value = repository.settleToday().takeIf { it > 0 }
     }
 
-    /** 計數中改目標。給 0 就是取消目標 */
-    fun setCounterTarget(value: Int) {
-        _counter.value = _counter.value?.setTarget(value)
+    fun clearSettled() {
+        _settled.value = null
     }
 
-    fun saveCounter() {
-        val state = _counter.value ?: return
-        if (state.done > 0) {
-            _counterSaved.value = state.done
-            repository.addSession(
-                Session(
-                    id = newId(),
-                    date = dateOf(state.startedAt),
-                    startedAt = state.startedAt,
-                    endedAt = System.currentTimeMillis(),
-                    routineId = null,
-                    routineName = state.name,
-                    logs = listOf(state.toLog())
-                )
-            )
-        }
-        _counter.value = null
-    }
+    // ---------- 預設清單 ----------
 
-    fun discardCounter() {
-        _counter.value = null
-    }
+    fun setDefaults(items: List<DayItem>) = repository.setDefaults(items)
+
+    /** 設定頁的「用今天這份當預設」。次數歸零，存的是要做什麼、做幾下 */
+    fun saveTodayAsDefaults() =
+        repository.setDefaults(today.value.items.map { it.copy(done = 0) })
 
     // ---------- 動作庫 ----------
 

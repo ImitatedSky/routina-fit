@@ -58,7 +58,7 @@ fun LibraryScreen(
     viewModel: FitViewModel,
     onEditExercise: (String) -> Unit,
     onNewExercise: () -> Unit,
-    onCountExercise: (String) -> Unit
+    onAddToToday: (String) -> Unit
 ) {
     val exercises by viewModel.exercises.collectAsStateWithLifecycle()
     val expanded by viewModel.expandedParts.collectAsStateWithLifecycle()
@@ -73,11 +73,11 @@ fun LibraryScreen(
     val flat = query.isNotBlank() || equipment.isNotEmpty()
 
     val editLabel = stringResource(R.string.action_edit)
-    val countLabel = stringResource(R.string.action_count_this)
+    val addLabel = stringResource(R.string.action_add_to_today)
 
     fun rowMenu(exercise: Exercise) = listOf(
         editLabel to { onEditExercise(exercise.id) },
-        countLabel to { onCountExercise(exercise.id) }
+        addLabel to { onAddToToday(exercise.id) }
     )
 
     Scaffold(

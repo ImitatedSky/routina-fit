@@ -66,13 +66,7 @@ fun estimateMinutes(routine: Routine, exercises: List<Exercise>): Int {
     return ((seconds + 59) / 60).coerceAtLeast(1)
 }
 
-/** 本週有練的日期。今日頁那排格子用 */
-fun trainedDates(sessions: List<Session>, dates: List<String>): Set<String> {
-    val trained = sessions.map { it.date }.toSet()
-    return dates.filter { it in trained }.toSet()
-}
-
-/** 最近做過的動作 id，最新的在前。快速計數頁用來排「最近」 */
+/** 最近做過的動作 id，最新的在前。加一項那一頁用來排「最近做過」 */
 fun recentExerciseIds(sessions: List<Session>, limit: Int): List<String> =
     sessions.sortedByDescending { it.startedAt }
         .flatMap { session -> session.logs.map { it.exerciseId } }

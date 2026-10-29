@@ -1,11 +1,8 @@
 package com.routina.fit.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -13,57 +10,77 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.routina.fit.R
-import com.routina.fit.data.estimateMinutes
-import com.routina.fit.data.thisWeek
-import com.routina.fit.data.todayDate
-import com.routina.fit.data.trainedDates
-import com.routina.fit.model.Routine
+import com.routina.fit.data.currentStreak
+import com.routina.fit.data.dailyVolume
+import com.routina.fit.data.plusToday
+import com.routina.fit.model.DayItem
 
 /**
- * 首頁回答兩個問題：這週練了幾天、現在要練哪一張。
+ * 首頁就是今天要做的清單，點一下加一下。
  *
- * 計數不在這一頁：它自己是一個分頁（在「動作」右邊）。原本放在這裡的文字連結
- * 捲動之後就看不到，等於藏起來了。
+ * 這一頁回答兩件事：**最近有沒有在練**（上面那塊火與格子圖）、**今天還剩什麼**（清單）。
+ * 課表、動作庫、歷史紀錄都是別的地方，各自有分頁——首頁不是目錄。
+ *
+ * 「結算」把今天寫成一筆紀錄。沒按也不會掉：跨到隔天時有做卻沒結算的會自動收進去
+ * （見 FitRepository.ensureToday），所以這顆的意思是「現在就記下來」。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(
     viewModel: FitViewModel,
-    onStartRoutine: (String) -> Unit,
-    onOpenSession: (String) -> Unit,
-    onOpenRoutines: () -> Unit,
+    onAddItem: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val routines by viewModel.routines.collectAsStateWithLifecycle()
-    val exercises by viewModel.exercises.collectAsStateWithLifecycle()
+    val plan by viewModel.today.collectAsStateWithLifecycle()
     val sessions by viewModel.sessions.collectAsStateWithLifecycle()
+    val justSettled by viewModel.settled.collectAsStateWithLifecycle()
 
-    val week = remember { thisWeek() }
-    val today = remember { todayDate() }
-    val trained = trainedDates(sessions, week)
-    val todaySessions = sessions.filter { it.date == today }.sortedByDescending { it.startedAt }
+    val snackbar = remember { SnackbarHostState() }
+    var editing by remember { mutableStateOf<DayItem?>(null) }
+    var deleting by remember { mutableStateOf<DayItem?>(null) }
+
+    // App 開著過午夜是常態，回到前景就確認一次手上這份還是不是今天的
+    LifecycleResumeEffect(Unit) {
+        viewModel.ensureToday()
+        onPauseOrDispose { }
+    }
+
+    val volume = remember(sessions, plan) {
+        plusToday(dailyVolume(sessions), plan.date, plan.total)
+    }
+    val streak = remember(volume) { currentStreak(volume) }
+
+    val settledTemplate = stringResource(R.string.today_settled)
+    LaunchedEffect(justSettled) {
+        val count = justSettled ?: return@LaunchedEffect
+        snackbar.showSnackbar(String.format(settledTemplate, count))
+        viewModel.clearSettled()
+    }
 
     Scaffold(
         topBar = {
@@ -75,183 +92,115 @@ fun TodayScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            text = formatDayLabel(today),
+                            text = formatDayLabel(plan.date),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
+                    TextButton(
+                        enabled = plan.touched,
+                        onClick = { viewModel.settleToday() }
+                    ) {
+                        Text(
+                            text = if (plan.settled) {
+                                stringResource(R.string.today_settle_again)
+                            } else {
+                                stringResource(R.string.today_settle)
+                            }
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, stringResource(R.string.settings_title))
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbar) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-            // 組內 6dp，段落標題自己帶 16dp 上緣——組外至少是組內的兩倍，分組才讀得出來
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item {
+                StreakCard(volume = volume, today = plan.date, streak = streak)
+            }
+
             item {
                 SectionLabel(
-                    stringResource(R.string.today_week) + "　" +
-                        stringResource(R.string.today_week_count, trained.size)
-                )
-            }
-            item {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        week.forEach { date ->
-                            WeekCell(
-                                date = date,
-                                trained = date in trained,
-                                isToday = date == today,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            item { SectionLabel(stringResource(R.string.today_start_section)) }
-
-            if (routines.isEmpty()) {
-                item { HintText(stringResource(R.string.today_no_routine_tab)) }
-                item {
-                    TextButton(onClick = onOpenRoutines) {
-                        Text(stringResource(R.string.routines_title))
-                    }
-                }
-            } else {
-                items(routines, key = { it.id }) { routine ->
-                    StartRoutineRow(
-                        routine = routine,
-                        minutes = estimateMinutes(routine, exercises),
-                        onClick = { onStartRoutine(routine.id) }
-                    )
-                }
-            }
-
-            item { SectionLabel(stringResource(R.string.today_done_section)) }
-
-            if (todaySessions.isEmpty()) {
-                item { HintText(stringResource(R.string.today_nothing_yet)) }
-            } else {
-                items(todaySessions, key = { it.id }) { session ->
-                    SessionRow(
-                        session = session,
-                        onClick = { onOpenSession(session.id) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeekCell(
-    date: String,
-    trained: Boolean,
-    isToday: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = weekdayLetter(date),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        // 有練的日子用容器色、不是飽和主色。一頁只留一個飽和元素，
-        // 這一頁的名額給「開始」，不是給日曆。
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = if (trained) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            border = if (isToday) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .fillMaxWidth()
-                .height(40.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                when {
-                    trained -> Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    isToday -> Text(
-                        text = stringResource(R.string.weekday_today),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** 首頁的課表列。這裡只有一件事可做——開始——所以整列就是那顆按鈕 */
-@Composable
-private fun StartRoutineRow(
-    routine: Routine,
-    minutes: Int,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = routine.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = if (routine.items.isEmpty()) {
-                        stringResource(R.string.routine_empty_meta)
+                    text = if (plan.total > 0) {
+                        stringResource(R.string.today_total, plan.total)
                     } else {
-                        stringResource(R.string.routine_meta, routine.items.size, minutes)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        stringResource(R.string.today_list)
+                    }
                 )
             }
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = stringResource(R.string.today_start),
-                tint = MaterialTheme.colorScheme.primary
-            )
+
+            if (plan.items.isEmpty()) {
+                item { HintText(stringResource(R.string.today_list_empty)) }
+            } else {
+                items(plan.items, key = { it.id }) { item ->
+                    DayItemRow(
+                        item = item,
+                        onCount = { delta -> viewModel.count(item.id, delta) },
+                        onEdit = { editing = item },
+                        // 還沒按過就沒東西好丟，直接刪；有數字才問一聲
+                        onDelete = {
+                            if (item.done > 0) deleting = item else viewModel.deleteTodayItem(item.id)
+                        }
+                    )
+                }
+            }
+
+            // ＋ 是清單的最後一列，不是浮在上面的 FAB：清單短的時候 FAB 剛好蓋住最後一列，
+            // 而這一頁的列又是整片可以點的——被蓋住的那塊就點不到了
+            item { AddItemRow(onClick = onAddItem) }
         }
+    }
+
+    editing?.let { item ->
+        DayItemDialog(
+            title = stringResource(R.string.today_edit_item),
+            item = item,
+            onConfirm = { name, target ->
+                viewModel.updateTodayItem(item.copy(name = name, target = target))
+            },
+            onDismiss = { editing = null }
+        )
+    }
+
+    deleting?.let { item ->
+        ConfirmDialog(
+            title = stringResource(R.string.today_delete_item),
+            message = stringResource(R.string.today_delete_item_message, item.done),
+            onConfirm = { viewModel.deleteTodayItem(item.id) },
+            onDismiss = { deleting = null }
+        )
+    }
+}
+
+/** 清單最後那一列：加一項。做成一列而不是 FAB，見呼叫處的註解 */
+@Composable
+private fun AddItemRow(onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(
+            text = stringResource(R.string.today_add_item),
+            style = MaterialTheme.typography.titleMedium
+        )
     }
 }

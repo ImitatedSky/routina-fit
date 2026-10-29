@@ -25,8 +25,8 @@ import com.routina.fit.R
 import com.routina.fit.model.Session
 
 /**
- * 訓練紀錄，依日期分段。課表與快速計數混在同一份清單，
- * 因為它們本來就是同一個資料結構（[Session.routineId] 是 null 就是計數）。
+ * 訓練紀錄，依日期分段。課表與每日清單混在同一份清單，
+ * 因為它們本來就是同一個資料結構（[Session.routineId] 是 null 就是每日清單）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +74,9 @@ fun HistoryScreen(
                 item { HintText(stringResource(R.string.history_empty)) }
             }
             byDay.forEach { (date, daySessions) ->
-                item(key = "day-$date") { SectionLabel(formatDayLabel(date)) }
+                // 前綴不能和 Session 的 id 撞——每日清單那筆的 id 就是 "day-" 加日期，
+                // 撞到的話同一個 LazyColumn 會有兩個一樣的 key，直接丟例外
+                item(key = "header-$date") { SectionLabel(formatDayLabel(date)) }
                 items(daySessions, key = { it.id }) { session ->
                     SessionRow(
                         session = session,
