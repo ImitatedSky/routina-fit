@@ -290,7 +290,7 @@ private fun ExerciseRow(
     }
 }
 
-/** 課表編輯與快速計數挑動作時用，與動作庫的列同一個長相，只是沒有 ⋯ */
+/** 「加一項」挑動作時用，與動作庫的列同一個長相，只是沒有 ⋯ */
 @Composable
 fun ExercisePickerRow(exercise: Exercise, onClick: () -> Unit) {
     ExerciseRow(exercise = exercise, onClick = onClick)

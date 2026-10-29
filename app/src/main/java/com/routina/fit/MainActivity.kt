@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Today
@@ -38,13 +37,8 @@ import com.routina.fit.ui.ExerciseEditScreen
 import com.routina.fit.ui.FitViewModel
 import com.routina.fit.ui.HistoryScreen
 import com.routina.fit.ui.LibraryScreen
-import com.routina.fit.ui.NEW_ROUTINE
-import com.routina.fit.ui.RoutineEditScreen
-import com.routina.fit.ui.RoutinesScreen
-import com.routina.fit.ui.RunScreen
 import com.routina.fit.ui.SessionScreen
 import com.routina.fit.ui.SettingsScreen
-import com.routina.fit.ui.SummaryScreen
 import com.routina.fit.ui.TodayScreen
 import com.routina.fit.ui.theme.FitTheme
 
@@ -67,26 +61,22 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * 底部分頁只放「地方」。執行、摘要、編輯、加一項這些是任務，一律全螢幕蓋上去、不顯示分頁列。
+ * 底部分頁只放「地方」。編輯、加一項這些是任務，一律全螢幕蓋上去、不顯示分頁列。
  *
- * 計數沒有自己的分頁——它就是首頁。原本那個「計數」分頁是先選動作再開始數，
- * 等於每天都要重新設定一次同一件事；現在今天要做什麼本來就列在首頁上，點一下就是一下。
+ * 計數沒有自己的分頁——它就是首頁。課表也沒有了：那套「排好一張表、照著一項一項跑、
+ * 中間倒數休息」的東西，使用者自己的訓練表第三天就空了，真正用得下去的是每天同一份清單。
  */
 private enum class Tab(val route: String, val label: Int, val icon: ImageVector) {
     TODAY(Routes.TODAY, R.string.tab_today, Icons.Default.Today),
-    ROUTINES(Routes.ROUTINES, R.string.tab_routines, Icons.AutoMirrored.Filled.ListAlt),
     LIBRARY(Routes.LIBRARY, R.string.tab_library, Icons.Default.FitnessCenter),
     HISTORY(Routes.HISTORY, R.string.tab_history, Icons.Default.History)
 }
 
 private object Routes {
     const val TODAY = "today"
-    const val ROUTINES = "routines"
     const val LIBRARY = "library"
     const val HISTORY = "history"
 
-    const val RUN = "run"
-    const val SUMMARY = "summary"
     const val SETTINGS = "settings"
     const val DEFAULTS = "defaults"
     const val EXERCISE_NEW = "exercise/new"
@@ -95,18 +85,15 @@ private object Routes {
     const val ITEM_NEW = "item/new?exerciseId={exerciseId}"
 
     const val EXERCISE_EDIT = "exercise/{exerciseId}"
-    const val ROUTINE_EDIT = "routine/{routineId}"
     const val SESSION = "session/{sessionId}"
 
     const val ARG_EXERCISE_ID = "exerciseId"
-    const val ARG_ROUTINE_ID = "routineId"
     const val ARG_SESSION_ID = "sessionId"
 
     fun newItem(exerciseId: String = "") =
         if (exerciseId.isEmpty()) "item/new" else "item/new?exerciseId=$exerciseId"
 
     fun exercise(id: String) = "exercise/$id"
-    fun routine(id: String) = "routine/$id"
     fun session(id: String) = "session/$id"
 }
 
@@ -152,16 +139,6 @@ private fun FitRoot() {
                 )
             }
 
-            composable(Routes.ROUTINES) {
-                RoutinesScreen(
-                    viewModel = viewModel,
-                    onEditRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
-                    onStartRoutine = { routineId ->
-                        if (viewModel.startRoutine(routineId)) navController.navigate(Routes.RUN)
-                    }
-                )
-            }
-
             composable(Routes.LIBRARY) {
                 LibraryScreen(
                     viewModel = viewModel,
@@ -175,27 +152,6 @@ private fun FitRoot() {
                 HistoryScreen(
                     viewModel = viewModel,
                     onOpenSession = { id -> navController.navigate(Routes.session(id)) }
-                )
-            }
-
-            // 執行中與摘要都靠 ViewModel 裡那一份 RunState，路由本身不帶參數。
-            // 練完（phase 變成 DONE）由 RunScreen 換到摘要，並把自己從返回堆疊移掉。
-            composable(Routes.RUN) {
-                RunScreen(
-                    viewModel = viewModel,
-                    onDone = {
-                        navController.navigate(Routes.SUMMARY) {
-                            popUpTo(Routes.RUN) { inclusive = true }
-                        }
-                    },
-                    onQuit = { navController.popBackStack() }
-                )
-            }
-
-            composable(Routes.SUMMARY) {
-                SummaryScreen(
-                    viewModel = viewModel,
-                    onClose = { navController.popBackStack() }
                 )
             }
 
@@ -232,24 +188,6 @@ private fun FitRoot() {
                     viewModel = viewModel,
                     exerciseId = entry.arguments?.getString(Routes.ARG_EXERCISE_ID),
                     onDone = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                route = Routes.ROUTINE_EDIT,
-                arguments = listOf(navArgument(Routes.ARG_ROUTINE_ID) { type = NavType.StringType })
-            ) { entry ->
-                RoutineEditScreen(
-                    viewModel = viewModel,
-                    routineId = entry.arguments?.getString(Routes.ARG_ROUTINE_ID) ?: NEW_ROUTINE,
-                    onStart = { routineId ->
-                        if (viewModel.startRoutine(routineId)) {
-                            navController.navigate(Routes.RUN) {
-                                popUpTo(Routes.ROUTINES) { inclusive = false }
-                            }
-                        }
-                    },
-                    onBack = { navController.popBackStack() }
                 )
             }
 

@@ -8,8 +8,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class FitSettings(
-    val defaultRestSec: Int = 45,
     val sound: Boolean = true,
-    val vibrate: Boolean = true,
-    val keepScreenOn: Boolean = true
+    val vibrate: Boolean = true
 )

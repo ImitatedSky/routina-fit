@@ -41,6 +41,9 @@ import kotlin.math.ln
  *
  * 這一塊只回答一個問題——**我最近有沒有在練**。它不可點、不是入口，
  * 所以整塊都用容器色，不跟下面的清單搶。
+ *
+ * 格子底下不寫「一天一格，做得越多顏色越深」這種說明：那是看圖就知道的事，
+ * 寫出來只是多一行字。畫面上只留看不出來的資訊。
  */
 @Composable
 fun StreakCard(
@@ -57,21 +60,15 @@ fun StreakCard(
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StreakFlame(streak)
-                Column(modifier = Modifier.padding(start = 10.dp)) {
-                    Text(
-                        text = if (streak > 0) {
-                            stringResource(R.string.streak_days, streak)
-                        } else {
-                            stringResource(R.string.streak_none)
-                        },
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = stringResource(R.string.streak_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = if (streak > 0) {
+                        stringResource(R.string.streak_days, streak)
+                    } else {
+                        stringResource(R.string.streak_none)
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(start = 10.dp)
+                )
             }
             Heatmap(
                 volume = volume,
@@ -107,7 +104,7 @@ fun StreakFlame(streak: Int, modifier: Modifier = Modifier) {
     )
 
     Box(
-        modifier = modifier.size(44.dp),
+        modifier = modifier.size(36.dp),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -125,7 +122,7 @@ fun StreakFlame(streak: Int, modifier: Modifier = Modifier) {
                 colors.flame(heat)
             },
             modifier = Modifier
-                .size(26.dp)
+                .size(22.dp)
                 .graphicsLayer {
                     scaleX = scale.value
                     scaleY = scale.value
@@ -193,8 +190,13 @@ fun Heatmap(
     }
 }
 
-/** 一週的格子寬度目標，實際寬度會依螢幕調整 */
-private val CELL_TARGET = 12.dp
+/**
+ * 一週的格子寬度目標，實際寬度會依螢幕調整。
+ *
+ * 11dp 在 411dp 寬的螢幕上大約是 27 欄（半年），整張圖高度 96dp——
+ * 和一列 72dp 差不多。這一塊是回顧，不該長得比今天要做的事還大。
+ */
+private val CELL_TARGET = 11.dp
 private val GAP = 3.dp
 private val TODAY_RING = 1.5.dp
 

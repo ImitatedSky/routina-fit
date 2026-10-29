@@ -1,8 +1,6 @@
 package com.routina.fit.data
 
 import com.routina.fit.model.Exercise
-import com.routina.fit.model.Measure
-import com.routina.fit.model.Routine
 import com.routina.fit.model.Session
 
 /** 動作庫依部位分組的一組。[part] 空字串代表未分類 */
@@ -53,19 +51,6 @@ fun filterByEquipment(exercises: List<Exercise>, wanted: String): List<Exercise>
 /** 「徒手」在篩選列上是一顆晶片，但它不是一種器材，所以用一個不會撞名的 sentinel */
 const val BODYWEIGHT_FILTER = "__bodyweight__"
 
-/**
- * 課表大概要練多久（分鐘），只是給首頁一個概念。
- * 計次動作用一次三秒估，計時動作用目標秒數，再加上每一項的休息。
- */
-fun estimateMinutes(routine: Routine, exercises: List<Exercise>): Int {
-    val seconds = routine.items.sumOf { item ->
-        val measure = exercises.firstOrNull { it.id == item.exerciseId }?.measure ?: Measure.REPS
-        val work = if (measure == Measure.SECONDS) item.target else item.target * SECONDS_PER_REP
-        work + item.restSec
-    }
-    return ((seconds + 59) / 60).coerceAtLeast(1)
-}
-
 /** 最近做過的動作 id，最新的在前。加一項那一頁用來排「最近做過」 */
 fun recentExerciseIds(sessions: List<Session>, limit: Int): List<String> =
     sessions.sortedByDescending { it.startedAt }
@@ -73,5 +58,3 @@ fun recentExerciseIds(sessions: List<Session>, limit: Int): List<String> =
         .filter { it.isNotEmpty() }
         .distinct()
         .take(limit)
-
-private const val SECONDS_PER_REP = 3

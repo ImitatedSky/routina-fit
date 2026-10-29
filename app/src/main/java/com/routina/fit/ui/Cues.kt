@@ -7,17 +7,12 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.view.WindowManager
-import androidx.activity.ComponentActivity
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
 
 /**
- * 倒數的聲音與震動。
+ * 達成目標時的那一聲。
  *
  * 走 STREAM_MUSIC 而不是通知音量：訓練時多半在放音樂，提示音要和音樂同一個音量
- * 才聽得到，而且手機轉靜音時計時器還是該響。
+ * 才聽得到，而且手機轉靜音時還是該響。
  */
 class Cues(context: Context) {
 
@@ -42,13 +37,7 @@ class Cues(context: Context) {
         null
     }
 
-    /** 倒數最後幾秒的短嘟 */
-    fun tick(sound: Boolean) {
-        if (!sound) return
-        runCatching { tone?.startTone(ToneGenerator.TONE_PROP_BEEP, TICK_MS) }
-    }
-
-    /** 歸零：長一點的嘟聲加震動 */
+    /** 做到目標了：一聲嘟加震動 */
     fun done(sound: Boolean, vibrate: Boolean) {
         if (sound) runCatching { tone?.startTone(ToneGenerator.TONE_PROP_BEEP2, DONE_MS) }
         if (vibrate) {
@@ -64,24 +53,8 @@ class Cues(context: Context) {
 
     private companion object {
         const val VOLUME = 80
-        const val TICK_MS = 120
         const val DONE_MS = 450
         const val VIBRATE_MS = 250L
     }
 }
 
-/**
- * 掛在執行畫面與計數畫面上：這兩頁在時，螢幕不熄。
- * 離開就把旗標拆掉，不然回到別的畫面手機還會一直亮著。
- */
-@Composable
-fun KeepScreenOn(enabled: Boolean) {
-    val context = LocalContext.current
-    DisposableEffect(enabled) {
-        val window = (context as? ComponentActivity)?.window
-        if (enabled) window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-}

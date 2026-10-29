@@ -25,8 +25,10 @@ import com.routina.fit.R
 import com.routina.fit.model.Session
 
 /**
- * 訓練紀錄，依日期分段。課表與每日清單混在同一份清單，
- * 因為它們本來就是同一個資料結構（[Session.routineId] 是 null 就是每日清單）。
+ * 訓練紀錄，依日期分段。一天一筆，內容是那天清單上每一項做到的次數。
+ *
+ * v0.4.0 以前的課表紀錄也還在這裡（[Session.routineId] 不是 null 的那些），
+ * 功能拿掉了但紀錄不動——紀錄存的是當時的快照。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

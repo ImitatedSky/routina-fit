@@ -37,8 +37,8 @@ android {
         applicationId = "com.routina.fit"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 6
-        versionName = "0.3.0"
+        versionCode = 7
+        versionName = "0.4.0"
 
         vectorDrawables {
             useSupportLibrary = true

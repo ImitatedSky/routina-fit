@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
  * 整包備份，一個 JSON 檔就能把 App 還原回來。
  *
  * [schemaVersion] 只在格式真的不相容時才往上加。新增有預設值的欄位不算不相容，
- * 舊備份照樣讀得進來。
+ * 舊備份照樣讀得進來——v0.3.0 以前的備份裡那個 `routines` 陣列會被忽略
+ * （`ignoreUnknownKeys`），課表功能已經拿掉了。
  */
 @Serializable
 data class FitBackup(
@@ -14,7 +15,6 @@ data class FitBackup(
     val app: String = "fit",
     val exportedAt: Long,
     val exercises: List<Exercise> = emptyList(),
-    val routines: List<Routine> = emptyList(),
     val sessions: List<Session> = emptyList(),
     val settings: FitSettings? = null,
     val defaults: List<DayItem> = emptyList(),

@@ -7,7 +7,6 @@ import com.routina.fit.model.Exercise
 import com.routina.fit.model.FitBackup
 import com.routina.fit.model.FitSettings
 import com.routina.fit.model.Measure
-import com.routina.fit.model.Routine
 import com.routina.fit.model.Session
 import com.routina.fit.model.SetLog
 import kotlinx.coroutines.CoroutineScope
@@ -50,16 +49,12 @@ class FitRepository(context: Context) {
     private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private val exercisesFile: File get() = File(appContext.filesDir, FILE_EXERCISES)
-    private val routinesFile: File get() = File(appContext.filesDir, FILE_ROUTINES)
     private val sessionsFile: File get() = File(appContext.filesDir, FILE_SESSIONS)
     private val defaultsFile: File get() = File(appContext.filesDir, FILE_DEFAULTS)
     private val dayFile: File get() = File(appContext.filesDir, FILE_DAY)
 
     private val _exercises = MutableStateFlow<List<Exercise>>(emptyList())
     val exercises: StateFlow<List<Exercise>> = _exercises.asStateFlow()
-
-    private val _routines = MutableStateFlow<List<Routine>>(emptyList())
-    val routines: StateFlow<List<Routine>> = _routines.asStateFlow()
 
     private val _sessions = MutableStateFlow<List<Session>>(emptyList())
     val sessions: StateFlow<List<Session>> = _sessions.asStateFlow()
@@ -84,9 +79,6 @@ class FitRepository(context: Context) {
         val seededExercises = loadSeeded(exercisesFile, ASSET_EXERCISES, Exercise.serializer()) {
             _exercises.value = it
         }
-        val seededRoutines = loadSeeded(routinesFile, ASSET_ROUTINES, Routine.serializer()) {
-            _routines.value = it
-        }
         val seededDefaults = loadSeeded(defaultsFile, ASSET_DEFAULTS, DayItem.serializer()) {
             _defaults.value = it
         }
@@ -96,7 +88,6 @@ class FitRepository(context: Context) {
 
         // 種子資料要立刻落地，不然「使用者自己刪光」與「還沒載過」下次啟動就分不出來
         if (seededExercises && _exercises.value.isNotEmpty()) persistExercises()
-        if (seededRoutines && _routines.value.isNotEmpty()) persistRoutines()
         if (seededDefaults && _defaults.value.isNotEmpty()) persistDefaults()
 
         val storedDay = readDay()
@@ -175,10 +166,8 @@ class FitRepository(context: Context) {
     private fun readSettings(): FitSettings {
         val fallback = FitSettings()
         return FitSettings(
-            defaultRestSec = prefs.getInt(KEY_DEFAULT_REST, fallback.defaultRestSec),
             sound = prefs.getBoolean(KEY_SOUND, fallback.sound),
-            vibrate = prefs.getBoolean(KEY_VIBRATE, fallback.vibrate),
-            keepScreenOn = prefs.getBoolean(KEY_KEEP_SCREEN_ON, fallback.keepScreenOn)
+            vibrate = prefs.getBoolean(KEY_VIBRATE, fallback.vibrate)
         )
     }
 
@@ -315,21 +304,10 @@ class FitRepository(context: Context) {
         persistExercises()
     }
 
-    /**
-     * 刪動作時把課表裡用到它的項目一起移除——留著會變成點不動的空項目。
-     * 紀錄不動：紀錄存的是當時的名稱快照。
-     */
+    /** 紀錄與今天的清單都不動：它們存的是當時的名稱快照 */
     fun deleteExercise(id: String) {
         _exercises.value = _exercises.value.filterNot { it.id == id }
         persistExercises()
-
-        val affected = _routines.value.any { routine -> routine.items.any { it.exerciseId == id } }
-        if (affected) {
-            _routines.value = _routines.value.map { routine ->
-                routine.copy(items = routine.items.filterNot { it.exerciseId == id })
-            }
-            persistRoutines()
-        }
     }
 
     fun setPartExpanded(part: String, expanded: Boolean) {
@@ -338,26 +316,6 @@ class FitRepository(context: Context) {
         _expandedParts.value = next
         val stored = next.joinToString("\n") { it.ifEmpty { NONE_PART_KEY } }
         prefs.edit().putString(KEY_EXPANDED_PARTS, stored).apply()
-    }
-
-    // ---------- 課表 ----------
-
-    fun findRoutine(id: String): Routine? = _routines.value.firstOrNull { it.id == id }
-
-    fun upsertRoutine(routine: Routine) {
-        val current = _routines.value
-        val index = current.indexOfFirst { it.id == routine.id }
-        _routines.value = if (index >= 0) {
-            current.toMutableList().apply { this[index] = routine }
-        } else {
-            current + routine
-        }
-        persistRoutines()
-    }
-
-    fun deleteRoutine(id: String) {
-        _routines.value = _routines.value.filterNot { it.id == id }
-        persistRoutines()
     }
 
     // ---------- 紀錄 ----------
@@ -386,10 +344,8 @@ class FitRepository(context: Context) {
     fun setSettings(settings: FitSettings) {
         _settings.value = settings
         prefs.edit()
-            .putInt(KEY_DEFAULT_REST, settings.defaultRestSec)
             .putBoolean(KEY_SOUND, settings.sound)
             .putBoolean(KEY_VIBRATE, settings.vibrate)
-            .putBoolean(KEY_KEEP_SCREEN_ON, settings.keepScreenOn)
             .apply()
     }
 
@@ -398,7 +354,6 @@ class FitRepository(context: Context) {
     fun buildBackup(): FitBackup = FitBackup(
         exportedAt = System.currentTimeMillis(),
         exercises = _exercises.value,
-        routines = _routines.value,
         sessions = _sessions.value,
         settings = _settings.value,
         defaults = _defaults.value,
@@ -416,11 +371,9 @@ class FitRepository(context: Context) {
      */
     fun applyBackup(backup: FitBackup) {
         _exercises.value = mergeBy(_exercises.value, backup.exercises) { it.id }
-        _routines.value = mergeBy(_routines.value, backup.routines) { it.id }
         _sessions.value = mergeBy(_sessions.value, backup.sessions) { it.id }
         backup.settings?.let { setSettings(it) }
         persistExercises()
-        persistRoutines()
         persistSessions()
 
         if (backup.defaults.isNotEmpty()) setDefaults(backup.defaults)
@@ -446,15 +399,6 @@ class FitRepository(context: Context) {
             writeMutex.withLock {
                 val content = json.encodeToString(ListSerializer(Exercise.serializer()), _exercises.value)
                 writeAtomically(exercisesFile, content)
-            }
-        }
-    }
-
-    private fun persistRoutines() {
-        scope.launch {
-            writeMutex.withLock {
-                val content = json.encodeToString(ListSerializer(Routine.serializer()), _routines.value)
-                writeAtomically(routinesFile, content)
             }
         }
     }
@@ -511,12 +455,10 @@ class FitRepository(context: Context) {
 
     private companion object {
         const val FILE_EXERCISES = "exercises.json"
-        const val FILE_ROUTINES = "routines.json"
         const val FILE_SESSIONS = "sessions.json"
         const val FILE_DEFAULTS = "defaults.json"
         const val FILE_DAY = "day.json"
         const val ASSET_EXERCISES = "seed_exercises.json"
-        const val ASSET_ROUTINES = "seed_routines.json"
         const val ASSET_DEFAULTS = "seed_defaults.json"
 
         /** 每日清單那筆紀錄的 id 前綴，後面接日期 */
@@ -529,10 +471,8 @@ class FitRepository(context: Context) {
         const val SEED_VERSION = 2
 
         const val PREFS_NAME = "routina_fit"
-        const val KEY_DEFAULT_REST = "default_rest"
         const val KEY_SOUND = "sound"
         const val KEY_VIBRATE = "vibrate"
-        const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         const val KEY_EXPANDED_PARTS = "expanded_parts"
         const val KEY_SEED_VERSION = "seed_version"
         const val NONE_PART_KEY = "__none__"

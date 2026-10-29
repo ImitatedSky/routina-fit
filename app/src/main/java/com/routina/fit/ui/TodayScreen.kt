@@ -4,21 +4,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,7 +44,7 @@ import com.routina.fit.model.DayItem
  * 首頁就是今天要做的清單，點一下加一下。
  *
  * 這一頁回答兩件事：**最近有沒有在練**（上面那塊火與格子圖）、**今天還剩什麼**（清單）。
- * 課表、動作庫、歷史紀錄都是別的地方，各自有分頁——首頁不是目錄。
+ * 動作庫與歷史紀錄是別的地方，各自有分頁——首頁不是目錄。
  *
  * 「結算」把今天寫成一筆紀錄。沒按也不會掉：跨到隔天時有做卻沒結算的會自動收進去
  * （見 FitRepository.ensureToday），所以這顆的意思是「現在就記下來」。
@@ -117,13 +117,23 @@ fun TodayScreen(
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) }
+        snackbarHost = { SnackbarHost(snackbar) },
+        // 小號的 FAB（40dp）不是標準的 56dp：這一頁的主角是清單，
+        // ＋ 一天只按一次，不該長得比每一列都還搶眼。
+        // 形狀要自己給圓形——M3 1.4 的 small FAB 預設是圓角方形，不是圓的。
+        floatingActionButton = {
+            SmallFloatingActionButton(onClick = onAddItem, shape = CircleShape) {
+                Icon(Icons.Default.Add, stringResource(R.string.today_add_item))
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
+            // 底下留的是 FAB 的高度加上下各 16dp：最後一列才捲得到 ＋ 的上面去
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 72.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
@@ -155,10 +165,6 @@ fun TodayScreen(
                     )
                 }
             }
-
-            // ＋ 是清單的最後一列，不是浮在上面的 FAB：清單短的時候 FAB 剛好蓋住最後一列，
-            // 而這一頁的列又是整片可以點的——被蓋住的那塊就點不到了
-            item { AddItemRow(onClick = onAddItem) }
         }
     }
 
@@ -166,8 +172,9 @@ fun TodayScreen(
         DayItemDialog(
             title = stringResource(R.string.today_edit_item),
             item = item,
-            onConfirm = { name, target ->
-                viewModel.updateTodayItem(item.copy(name = name, target = target))
+            countEditable = true,
+            onConfirm = { name, target, done ->
+                viewModel.updateTodayItem(item.copy(name = name, target = target, done = done))
             },
             onDismiss = { editing = null }
         )
@@ -183,24 +190,3 @@ fun TodayScreen(
     }
 }
 
-/** 清單最後那一列：加一項。做成一列而不是 FAB，見呼叫處的註解 */
-@Composable
-private fun AddItemRow(onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = null,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-        Text(
-            text = stringResource(R.string.today_add_item),
-            style = MaterialTheme.typography.titleMedium
-        )
-    }
-}

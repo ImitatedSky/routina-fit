@@ -45,8 +45,8 @@ import kotlinx.coroutines.launch
  * 表單在最上面、進來就能打字，下面的動作庫只是幫忙填——這是 Routina Bite 學到的教訓：
  * 使用者的心智模型是「表單是主角」，不是「先選東西再跳對話框」。
  *
- * 清單只列計次的動作。計時的東西（開合跳、棒式）該進課表，在這裡點它會變成「35 次」，
- * 只會讓人困惑。
+ * 清單只列計次的動作。計時的東西（開合跳、棒式）點一下沒有「一下」可言，
+ * 放進來只會變成「35 次」，讓人困惑。
  *
  * [exerciseId] 是從動作庫的「加到今天」帶過來的，進來就把表單填好。
  */
@@ -162,8 +162,6 @@ fun AddItemScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            item { HintText(stringResource(R.string.item_target_hint)) }
-
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
             if (recent.isNotEmpty() && query.isBlank()) {

@@ -82,7 +82,7 @@ fun SessionRow(
     onClick: () -> Unit,
     menu: List<Pair<String, () -> Unit>> = emptyList()
 ) {
-    // 每日清單那筆紀錄沒有課表名字，名字由這一層補——資料層不碰字串資源
+    // 每日清單那筆紀錄沒有名字（舊的課表紀錄才有），由這一層補——資料層不碰字串資源
     val name = session.routineName.ifEmpty { stringResource(R.string.session_daily) }
     Surface(
         onClick = onClick,
