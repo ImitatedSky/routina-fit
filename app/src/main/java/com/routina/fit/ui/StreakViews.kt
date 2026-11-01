@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.routina.fit.R
 import com.routina.fit.data.heatmapWeeks
@@ -57,7 +58,7 @@ fun StreakCard(
         color = MaterialTheme.colorScheme.surface,
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(CARD_PADDING)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StreakFlame(streak)
                 Text(
@@ -73,7 +74,7 @@ fun StreakCard(
             Heatmap(
                 volume = volume,
                 today = today,
-                modifier = Modifier.padding(top = 10.dp)
+                modifier = Modifier.padding(top = GRID_GAP)
             )
         }
     }
@@ -104,7 +105,7 @@ fun StreakFlame(streak: Int, modifier: Modifier = Modifier) {
     )
 
     Box(
-        modifier = modifier.size(36.dp),
+        modifier = modifier.size(FLAME_BOX),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -193,12 +194,28 @@ fun Heatmap(
 /**
  * 一週的格子寬度目標，實際寬度會依螢幕調整。
  *
- * 11dp 在 411dp 寬的螢幕上大約是 27 欄（半年），整張圖高度 96dp——
- * 和一列 72dp 差不多。這一塊是回顧，不該長得比今天要做的事還大。
+ * 11dp 在 411dp 寬的螢幕上大約是 25 欄（半年）。這一塊是回顧，
+ * 不該長得比今天要做的事還大，所以它不跟著螢幕高度長——高度留給清單。
  */
 private val CELL_TARGET = 11.dp
 private val GAP = 3.dp
 private val TODAY_RING = 1.5.dp
+private val CARD_PADDING = 14.dp
+private val FLAME_BOX = 36.dp
+private val GRID_GAP = 10.dp
+
+/**
+ * 卡片有多高——算得出來，不必等量完才知道。
+ *
+ * 首頁要先知道這個數字才能把剩下的高度分給清單（見 TodayScreen 的 rowHeight），
+ * 所以算法放這裡，和 [Heatmap] 共用同一組常數，不會兩邊各算各的。
+ */
+fun streakCardHeight(contentWidth: Dp): Dp {
+    val inner = contentWidth - CARD_PADDING * 2
+    val weeks = ((inner + GAP) / (CELL_TARGET + GAP)).toInt().coerceAtLeast(1)
+    val cell = (inner - GAP * (weeks - 1)) / weeks
+    return CARD_PADDING * 2 + FLAME_BOX + GRID_GAP + cell * 7 + GAP * 6
+}
 
 /** 火燒到最大的天數。再多也只是維持 */
 private const val STREAK_FULL = 100f

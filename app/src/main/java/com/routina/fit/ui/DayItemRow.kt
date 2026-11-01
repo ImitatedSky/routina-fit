@@ -41,8 +41,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.routina.fit.R
 import com.routina.fit.model.DayItem
 import com.routina.fit.ui.theme.bigNumber
@@ -65,6 +67,7 @@ private enum class Reveal { CLOSED, ACTIONS }
 @Composable
 fun DayItemRow(
     item: DayItem,
+    height: Dp,
     onCount: (Int) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -102,7 +105,7 @@ fun DayItemRow(
     Box(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .height(ROW_HEIGHT)
+                .height(height)
                 .fillMaxWidth()
                 .padding(end = 4.dp),
             horizontalArrangement = Arrangement.End,
@@ -172,7 +175,7 @@ fun DayItemRow(
         ) {
             Row(
                 modifier = Modifier
-                    .height(ROW_HEIGHT)
+                    .height(height)
                     .fillMaxWidth()
                     .drawBehind {
                         val width = size.width * progress.value
@@ -183,7 +186,10 @@ fun DayItemRow(
             ) {
                 Text(
                     text = item.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    // 跟著列高放大，但走 titleMedium 的設定（中文字重封頂 Medium、字距 0）
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = nameSize(height).sp
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -201,7 +207,7 @@ fun DayItemRow(
                 Row {
                     Text(
                         text = item.done.toString(),
-                        style = bigNumber(COUNT_SP),
+                        style = bigNumber(countSize(height)),
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.alignByBaseline()
                     )
@@ -244,7 +250,21 @@ private fun RevealButton(
 private fun AnchoredDraggableState<Reveal>.offsetOrZero(): Float =
     offset.takeIf { !it.isNaN() } ?: 0f
 
-private val ROW_HEIGHT = 72.dp
+/**
+ * 數字跟著列高長。列拉高到 140dp 還擺 24sp 的數字，整列就只是一塊空白，
+ * 高度要換成看得到的東西才有意義。
+ */
+private fun nameSize(height: Dp): Int =
+    (NAME_MIN_SP + ratio(height) * (NAME_MAX_SP - NAME_MIN_SP)).toInt()
+        .coerceIn(NAME_MIN_SP, NAME_MAX_SP)
+
+private fun countSize(height: Dp): Int =
+    (COUNT_MIN_SP + ratio(height) * (COUNT_MAX_SP - COUNT_MIN_SP)).toInt()
+        .coerceIn(COUNT_MIN_SP, COUNT_MAX_SP)
+
+/** 這一列在 [ROW_MIN]–[ROW_MAX] 之間的位置，0 = 最矮，1 = 最高 */
+private fun ratio(height: Dp): Float =
+    ((height - ROW_MIN) / (ROW_MAX - ROW_MIN)).coerceIn(0f, 1f)
 
 /** 滑開後露出來的寬度：兩顆 44dp 加上間距 */
 private val REVEAL_WIDTH = 100.dp
@@ -253,4 +273,18 @@ private val REVEAL_WIDTH = 100.dp
 private const val REPEAT_START_MS = 500L
 private const val REPEAT_MS = 110L
 private const val FILL_MS = 180
-private const val COUNT_SP = 24
+
+/**
+ * 列高的上下限。實際高度由首頁依螢幕算出來——固定值在 731dp 的螢幕上剛好，
+ * 到 997dp 的手機就會在下面空掉三分之一。
+ *
+ * 下限要夠低（72dp）：矮螢幕上三列如果被下限頂高，就會擠進留給 ＋ 的位置，
+ * 反而又蓋住最後一列。寧可在小螢幕上收緊一點。
+ */
+val ROW_MIN = 72.dp
+val ROW_MAX = 176.dp
+
+private const val COUNT_MIN_SP = 24
+private const val COUNT_MAX_SP = 48
+private const val NAME_MIN_SP = 16
+private const val NAME_MAX_SP = 22
